@@ -1,8 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
+import { useAuth } from "@/integrations/supabase/auth-context";
 
 export function SiteHeader() {
+  const { session, profile } = useAuth();
+  const dashHref = profile?.role === "client" ? "/client" : "/dashboard";
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">

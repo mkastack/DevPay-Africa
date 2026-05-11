@@ -21,6 +21,14 @@ export function DashboardShell({
   title: string;
 }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const initial = (profile?.full_name?.[0] ?? "U").toUpperCase();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/login" });
+  };
   return (
     <div className="min-h-screen flex">
       <aside className="hidden md:flex w-60 flex-col border-r border-border/60 bg-sidebar shrink-0">
@@ -65,7 +73,26 @@ export function DashboardShell({
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
             </button>
-            <div className="h-9 w-9 rounded-full bg-[image:var(--gradient-primary)] flex items-center justify-center font-display font-bold text-primary-foreground text-sm">A</div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-9 w-9 rounded-full bg-[image:var(--gradient-primary)] flex items-center justify-center font-display font-bold text-primary-foreground text-sm hover:opacity-90">
+                  {initial}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="font-medium">{profile?.full_name ?? "Account"}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{profile?.role ?? ""}</div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild><Link to="/profile">Profile</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/wallet">Wallet</Link></DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  <LogOut className="h-4 w-4 mr-2" /> Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>

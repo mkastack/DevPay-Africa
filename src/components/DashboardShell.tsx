@@ -1,8 +1,13 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Logo } from "./Logo";
-import { Bell, Search } from "lucide-react";
+import { Bell, LogOut, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Input } from "./ui/input";
+import { useAuth } from "@/integrations/supabase/auth-context";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon };
 

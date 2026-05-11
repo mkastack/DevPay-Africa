@@ -17,12 +17,20 @@ export function SiteHeader() {
           <Link to="/jobs" className="hover:text-foreground transition-colors">Browse Jobs</Link>
         </nav>
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Log in</Link>
-          </Button>
-          <Button asChild size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)]">
-            <Link to="/signup">Get Started</Link>
-          </Button>
+          {session ? (
+            <Button asChild size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)]">
+              <Link to={dashHref}>Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/login">Log in</Link>
+              </Button>
+              <Button asChild size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)]">
+                <Link to="/signup">Get Started</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FileText, Briefcase, Wallet as WalletIcon, User, Settings, ArrowDownToLine, Smartphone, CreditCard } from "lucide-react";
+import { LayoutDashboard, FileText, Briefcase, Wallet as WalletIcon, User, Settings, ArrowDownToLine, Smartphone, CreditCard, Loader2 } from "lucide-react";
+import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
 
 const nav = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -32,6 +33,8 @@ const badge: Record<string, string> = {
 };
 
 function WalletPage() {
+  const { ready } = useRequireAuth();
+  if (!ready) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   return (
     <DashboardShell nav={nav} title="Wallet">
       <div className="grid lg:grid-cols-3 gap-4">

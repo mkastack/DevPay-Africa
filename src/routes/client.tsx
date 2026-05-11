@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, StatCard } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, PlusCircle, FileSignature, CreditCard, Settings, Plus } from "lucide-react";
+import { LayoutDashboard, PlusCircle, FileSignature, CreditCard, Settings, Plus, Loader2 } from "lucide-react";
+import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
 
 const nav = [
   { to: "/client", label: "Overview", icon: LayoutDashboard },
@@ -17,11 +18,14 @@ export const Route = createFileRoute("/client")({
 });
 
 function ClientDash() {
+  const { ready, profile } = useRequireAuth("client");
+  if (!ready) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  const firstName = profile?.full_name?.split(" ")[0] ?? "there";
   return (
     <DashboardShell nav={nav} title="Client Overview">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <div className="text-sm text-muted-foreground">Welcome, James</div>
+          <div className="text-sm text-muted-foreground">Welcome, {firstName}</div>
           <div className="font-display text-2xl font-bold mt-1">Build your team, ship faster</div>
         </div>
         <Button className="bg-[image:var(--gradient-primary)] text-primary-foreground">

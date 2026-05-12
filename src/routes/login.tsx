@@ -4,7 +4,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Github, Loader2 } from "lucide-react";
+import { Github, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,29 +15,46 @@ export const Route = createFileRoute("/login")({
 });
 
 function Login() {
-  const { signIn, session, profile } = useAuth();
+  const { signIn, session, profile, resendConfirmation } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
 
-  // If already logged in, route to the right dashboard
   useEffect(() => {
-    if (session && profile) {
-      navigate({ to: profile.role === "client" ? "/client" : "/dashboard" });
-    }
+    if (session && profile) navigate({ to: profile.role === "client" ? "/client" : "/dashboard" });
   }, [session, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setNeedsConfirm(false);
     setBusy(true);
     try {
       await signIn(form.email, form.password);
       toast.success("Welcome back!");
-      // Auth context will update; useEffect above will redirect.
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Login failed");
+      const msg = err instanceof Error ? err.message : "Login failed";
+      if (/confirm/i.test(msg) || /not confirmed/i.test(msg)) {
+        setNeedsConfirm(true);
+        setError("Please confirm your email before logging in.");
+      } else if (/invalid login/i.test(msg)) {
+        setError("Wrong email or password.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      await resendConfirmation(form.email);
+      toast.success("Confirmation email sent");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not resend");
     }
   };
 
@@ -69,12 +86,25 @@ function Login() {
             <span className="bg-card px-3 relative z-10">or with email</span>
             <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
           </div>
+          {error && (
+            <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs p-3 flex gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div>{error}</div>
+                {needsConfirm && (
+                  <button type="button" onClick={handleResend} className="underline mt-1 hover:no-underline">
+                    Resend confirmation email
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="space-y-4">
             <div><Label>Email</Label><Input required type="email" className="mt-1.5" placeholder="you@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Password</Label><Input required type="password" className="mt-1.5" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
           </div>
           <Button type="submit" disabled={busy} className="w-full mt-6 bg-[image:var(--gradient-primary)] text-primary-foreground h-11">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Log in"}
+            {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Signing in…</> : "Log in"}
           </Button>
           <p className="text-xs text-center text-muted-foreground mt-4">
             New here? <Link to="/signup" className="text-primary hover:underline">Create an account</Link>

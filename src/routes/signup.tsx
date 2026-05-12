@@ -4,7 +4,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Github, Code2, Briefcase, Loader2 } from "lucide-react";
+import { Github, Code2, Briefcase, Loader2, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,24 +16,46 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignUp() {
-  const { signUp } = useAuth();
+  const { signUp, resendConfirmation } = useAuth();
   const navigate = useNavigate();
   const [role, setRole] = useState<UserRole | null>(null);
   const [form, setForm] = useState({ fullName: "", email: "", password: "" });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmSent, setConfirmSent] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!role) return;
+    setError(null);
     setBusy(true);
     try {
-      await signUp({ email: form.email, password: form.password, fullName: form.fullName, role });
-      toast.success("Account created — welcome!");
-      navigate({ to: role === "client" ? "/client" : "/dashboard" });
+      const { needsConfirmation, email } = await signUp({ ...form, role });
+      if (needsConfirmation) {
+        setConfirmSent(email);
+      } else {
+        toast.success("Account created — welcome!");
+        navigate({ to: role === "client" ? "/client" : "/dashboard" });
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign up failed");
+      const msg = err instanceof Error ? err.message : "Sign up failed";
+      setError(msg.includes("already registered") ? "This email is already registered. Try logging in instead." : msg);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!confirmSent) return;
+    setResending(true);
+    try {
+      await resendConfirmation(confirmSent);
+      toast.success("Confirmation email sent again");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not resend");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -44,6 +66,37 @@ function SignUp() {
     });
     if (error) toast.error(error.message);
   };
+
+  if (confirmSent) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="container mx-auto px-4 py-6"><Logo /></header>
+        <main className="flex-1 flex items-center justify-center px-4 py-10">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+            <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+              <Mail className="h-7 w-7" />
+            </div>
+            <h1 className="font-display text-2xl font-bold mt-4">Check your inbox</h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              We sent a confirmation link to <span className="text-foreground font-medium">{confirmSent}</span>.
+              Click the link to activate your account, then come back and log in.
+            </p>
+            <div className="mt-6 space-y-2">
+              <Button onClick={handleResend} disabled={resending} variant="outline" className="w-full">
+                {resending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Resend confirmation email"}
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
+                <Link to="/login">Back to login</Link>
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-6 flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-3 w-3 text-success" /> Don't see it? Check spam or promotions.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -94,13 +147,19 @@ function SignUp() {
                 <span className="bg-card px-3 relative z-10">or with email</span>
                 <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
               </div>
+              {error && (
+                <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs p-3 flex gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
               <div className="space-y-4">
                 <div><Label>Full name</Label><Input required className="mt-1.5" placeholder="Ada Lovelace" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
                 <div><Label>Email</Label><Input required type="email" className="mt-1.5" placeholder="you@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <div><Label>Password</Label><Input required type="password" minLength={6} className="mt-1.5" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
+                <div><Label>Password</Label><Input required type="password" minLength={6} className="mt-1.5" placeholder="At least 6 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
               </div>
               <Button type="submit" disabled={busy} className="w-full mt-6 bg-[image:var(--gradient-primary)] text-primary-foreground h-11">
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
+                {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating account…</> : "Create account"}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-4">
                 Already have an account? <Link to="/login" className="text-primary hover:underline">Log in</Link>

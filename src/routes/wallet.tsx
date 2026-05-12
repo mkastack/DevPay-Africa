@@ -1,13 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { LayoutDashboard, FileText, Briefcase, Wallet as WalletIcon, User, Settings, ArrowDownToLine, Smartphone, CreditCard, Loader2 } from "lucide-react";
 import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
+import { useAuth } from "@/integrations/supabase/auth-context";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const nav = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { to: "/dashboard/proposals", label: "My Proposals", icon: FileText },
-  { to: "/jobs", label: "Active Jobs", icon: Briefcase },
+  { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/wallet", label: "Wallet", icon: WalletIcon },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -18,23 +24,90 @@ export const Route = createFileRoute("/wallet")({
   component: WalletPage,
 });
 
-const tx = [
-  { d: "May 8, 2026", desc: "Stripe SaaS API — milestone 2", a: "+$1,200", s: "Completed" },
-  { d: "May 5, 2026", desc: "Withdrawal to MTN MoMo", a: "-$800", s: "Processing" },
-  { d: "May 2, 2026", desc: "Fintech dashboard — milestone 1", a: "+$1,500", s: "Completed" },
-  { d: "Apr 28, 2026", desc: "Withdrawal to Bank", a: "-$2,000", s: "Completed" },
-  { d: "Apr 22, 2026", desc: "Mobile MVP — final", a: "+$3,200", s: "Pending" },
-];
+type Tx = {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string | null;
+  type: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+};
+
+type Wd = { id: string; amount: number; method: string; destination: string | null; status: string; created_at: string };
 
 const badge: Record<string, string> = {
-  Completed: "bg-success/10 text-success border-success/30",
-  Processing: "bg-accent/10 text-accent border-accent/30",
-  Pending: "bg-muted text-muted-foreground border-border",
+  completed: "bg-success/10 text-success border-success/30",
+  processing: "bg-accent/10 text-accent border-accent/30",
+  pending: "bg-muted text-muted-foreground border-border",
+  failed: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
 function WalletPage() {
   const { ready } = useRequireAuth();
+  const { session } = useAuth();
+  const [tx, setTx] = useState<Tx[]>([]);
+  const [wd, setWd] = useState<Wd[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // withdraw form
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<"momo" | "bank">("momo");
+  const [destination, setDestination] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const refresh = async () => {
+    if (!session?.user) return;
+    setLoadingData(true);
+    const [{ data: txs }, { data: wds }] = await Promise.all([
+      supabase.from("transactions").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("withdrawals").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(50),
+    ]);
+    setTx((txs as Tx[]) ?? []);
+    setWd((wds as Wd[]) ?? []);
+    setLoadingData(false);
+  };
+
+  useEffect(() => { refresh(); }, [session?.user]);
+
+  const balance = tx.reduce((sum, t) => {
+    if (t.status !== "completed") return sum;
+    const sign = ["payment", "release", "deposit", "credit"].includes(t.type) ? 1 : -1;
+    return sum + sign * Number(t.amount);
+  }, 0)
+    - wd.filter((w) => ["pending", "processing", "completed"].includes(w.status))
+        .reduce((s, w) => s + Number(w.amount), 0);
+
+  const inEscrow = tx.filter((t) => t.type === "escrow" && t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
+  const lifetime = tx.filter((t) => t.status === "completed" && ["payment", "release", "deposit", "credit"].includes(t.type)).reduce((s, t) => s + Number(t.amount), 0);
+
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user) return;
+    const amt = Number(amount);
+    if (!amt || amt <= 0) { toast.error("Enter an amount"); return; }
+    if (amt > balance) { toast.error("Amount exceeds available balance"); return; }
+    setSubmitting(true);
+    const { error } = await supabase.from("withdrawals").insert({
+      user_id: session.user.id,
+      amount: amt,
+      method,
+      destination: destination || null,
+      status: "pending",
+      currency: "USD",
+    });
+    setSubmitting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Withdrawal requested");
+    setOpen(false);
+    setAmount(""); setDestination("");
+    refresh();
+  };
+
   if (!ready) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
   return (
     <DashboardShell nav={nav} title="Wallet">
       <div className="grid lg:grid-cols-3 gap-4">
@@ -42,47 +115,113 @@ function WalletPage() {
           <div className="absolute inset-0 -z-10 opacity-40" style={{ background: "var(--gradient-hero)" }} />
           <div className="text-xs uppercase tracking-wider text-muted-foreground">Available Balance</div>
           <div className="mt-3 flex items-baseline gap-3">
-            <div className="font-display text-5xl font-bold text-gradient-brand">$8,420.50</div>
-            <div className="text-muted-foreground">≈ GH₵ 102,330</div>
+            <div className="font-display text-5xl font-bold text-gradient-brand">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
           <div className="flex flex-wrap gap-2 mt-6">
-            <Button className="bg-[image:var(--gradient-primary)] text-primary-foreground"><ArrowDownToLine className="mr-2 h-4 w-4" /> Withdraw</Button>
-            <Button variant="outline"><Smartphone className="mr-2 h-4 w-4" /> Mobile Money</Button>
-            <Button variant="outline"><CreditCard className="mr-2 h-4 w-4" /> Bank Transfer</Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[image:var(--gradient-primary)] text-primary-foreground" disabled={balance <= 0}>
+                  <ArrowDownToLine className="mr-2 h-4 w-4" /> Withdraw
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Withdraw funds</DialogTitle>
+                  <DialogDescription>Request a payout. Available: ${balance.toFixed(2)}</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleWithdraw} className="space-y-4">
+                  <div><Label>Amount (USD)</Label><Input required type="number" min="1" step="0.01" max={balance} className="mt-1.5" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+                  <div>
+                    <Label>Method</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1.5">
+                      <button type="button" onClick={() => setMethod("momo")} className={`rounded-md border p-3 text-sm flex items-center gap-2 transition-colors ${method === "momo" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
+                        <Smartphone className="h-4 w-4" /> Mobile Money
+                      </button>
+                      <button type="button" onClick={() => setMethod("bank")} className={`rounded-md border p-3 text-sm flex items-center gap-2 transition-colors ${method === "bank" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
+                        <CreditCard className="h-4 w-4" /> Bank
+                      </button>
+                    </div>
+                  </div>
+                  <div><Label>{method === "momo" ? "Phone number" : "Account / IBAN"}</Label><Input required className="mt-1.5" placeholder={method === "momo" ? "+233 24 000 0000" : "GB29 NWBK..."} value={destination} onChange={(e) => setDestination(e.target.value)} /></div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={submitting} className="bg-[image:var(--gradient-primary)] text-primary-foreground">
+                      {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Submitting…</> : "Request payout"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-6">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">In Escrow</div>
-          <div className="font-display text-3xl font-bold mt-2 text-accent">$4,200</div>
-          <div className="text-xs text-muted-foreground mt-1">Across 3 active projects</div>
+          <div className="font-display text-3xl font-bold mt-2 text-accent">${inEscrow.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground mt-1">Held for active projects</div>
           <div className="mt-4 pt-4 border-t border-border/40">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Lifetime Earnings</div>
-            <div className="font-display text-2xl font-bold mt-2">$24,580</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Lifetime</div>
+            <div className="font-display text-2xl font-bold mt-2">${lifetime.toFixed(2)}</div>
           </div>
         </div>
       </div>
 
+      {/* Withdrawals */}
+      <div className="rounded-2xl border border-border/60 bg-card mt-6 overflow-hidden">
+        <div className="p-6 border-b border-border/40 flex items-center justify-between">
+          <h3 className="font-display text-lg font-semibold">Withdrawals</h3>
+          <span className="text-xs text-muted-foreground">{wd.length} total</span>
+        </div>
+        {loadingData ? (
+          <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+        ) : wd.length === 0 ? (
+          <p className="px-6 py-8 text-sm text-muted-foreground">No withdrawals yet.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-surface text-xs uppercase tracking-wider text-muted-foreground">
+              <tr><th className="text-left px-6 py-3">Date</th><th className="text-left px-6 py-3">Method</th><th className="text-right px-6 py-3">Amount</th><th className="text-right px-6 py-3">Status</th></tr>
+            </thead>
+            <tbody>
+              {wd.map((w) => (
+                <tr key={w.id} className="border-t border-border/40">
+                  <td className="px-6 py-4 text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">{w.method}{w.destination ? ` · ${w.destination}` : ""}</td>
+                  <td className="px-6 py-4 text-right font-semibold">-${Number(w.amount).toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right"><span className={`text-xs px-2.5 py-1 rounded-full border ${badge[w.status] ?? badge.pending}`}>{w.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Transactions */}
       <div className="rounded-2xl border border-border/60 bg-card mt-6 overflow-hidden">
         <div className="p-6 border-b border-border/40">
           <h3 className="font-display text-lg font-semibold">Transaction History</h3>
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-surface text-xs uppercase tracking-wider text-muted-foreground">
-            <tr><th className="text-left px-6 py-3">Date</th><th className="text-left px-6 py-3">Description</th><th className="text-right px-6 py-3">Amount</th><th className="text-right px-6 py-3">Status</th></tr>
-          </thead>
-          <tbody>
-            {tx.map((t, i) => (
-              <tr key={i} className="border-t border-border/40 hover:bg-surface/50 transition-colors">
-                <td className="px-6 py-4 text-muted-foreground">{t.d}</td>
-                <td className="px-6 py-4">{t.desc}</td>
-                <td className={`px-6 py-4 text-right font-semibold ${t.a.startsWith("+") ? "text-success" : "text-foreground"}`}>{t.a}</td>
-                <td className="px-6 py-4 text-right">
-                  <span className={`text-xs px-2.5 py-1 rounded-full border ${badge[t.s]}`}>{t.s}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {loadingData ? (
+          <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+        ) : tx.length === 0 ? (
+          <p className="px-6 py-8 text-sm text-muted-foreground">No transactions yet. Once you start earning or paying, they'll show up here.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-surface text-xs uppercase tracking-wider text-muted-foreground">
+              <tr><th className="text-left px-6 py-3">Date</th><th className="text-left px-6 py-3">Description</th><th className="text-right px-6 py-3">Amount</th><th className="text-right px-6 py-3">Status</th></tr>
+            </thead>
+            <tbody>
+              {tx.map((t) => {
+                const positive = ["payment", "release", "deposit", "credit"].includes(t.type);
+                return (
+                  <tr key={t.id} className="border-t border-border/40 hover:bg-surface/50 transition-colors">
+                    <td className="px-6 py-4 text-muted-foreground">{new Date(t.created_at).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{t.description ?? t.type}</td>
+                    <td className={`px-6 py-4 text-right font-semibold ${positive ? "text-success" : "text-foreground"}`}>{positive ? "+" : "-"}${Number(t.amount).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-right"><span className={`text-xs px-2.5 py-1 rounded-full border ${badge[t.status] ?? badge.pending}`}>{t.status}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </DashboardShell>
   );

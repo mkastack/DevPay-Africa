@@ -2,14 +2,18 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, type Profile, type UserRole } from "./client";
 
+type SignUpResult = { needsConfirmation: boolean; email: string };
+
 type AuthCtx = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (data: { email: string; password: string; fullName: string; role: UserRole }) => Promise<void>;
+  signUp: (data: { email: string; password: string; fullName: string; role: UserRole }) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  resendConfirmation: (email: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | undefined>(undefined);
@@ -25,15 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // subscribe FIRST, then fetch existing session
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (s?.user) {
-        // defer to avoid deadlock with auth callback
-        setTimeout(() => loadProfile(s.user.id), 0);
-      } else {
-        setProfile(null);
-      }
+      if (s?.user) setTimeout(() => loadProfile(s.user.id), 0);
+      else setProfile(null);
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -61,19 +60,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     if (error) throw error;
+
     const userId = data.user?.id;
-    if (userId) {
+    // If session is null, email confirmation is required.
+    const needsConfirmation = !data.session;
+
+    // Create profile row when we have a session (RLS allows it). Otherwise it'll be created on first sign-in.
+    if (userId && data.session) {
       const { error: pErr } = await supabase.from("profiles").insert({
         id: userId, role, full_name: fullName, username, email,
       });
-      if (pErr) throw pErr;
-      // role-specific record
+      if (pErr && !pErr.message.includes("duplicate")) throw pErr;
       if (role === "developer") {
         await supabase.from("developer_profiles").insert({ user_id: userId });
       } else if (role === "client") {
         await supabase.from("client_profiles").insert({ user_id: userId });
       }
     }
+
+    return { needsConfirmation, email };
   };
 
   const signOut = async () => {
@@ -81,8 +86,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   };
 
+  const resendConfirmation = async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    });
+    if (error) throw error;
+  };
+
+  const refreshProfile = async () => {
+    if (session?.user) await loadProfile(session.user.id);
+  };
+
   return (
-    <Ctx.Provider value={{ session, user: session?.user ?? null, profile, loading, signIn, signUp, signOut }}>
+    <Ctx.Provider value={{ session, user: session?.user ?? null, profile, loading, signIn, signUp, signOut, resendConfirmation, refreshProfile }}>
       {children}
     </Ctx.Provider>
   );

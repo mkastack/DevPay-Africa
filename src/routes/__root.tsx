@@ -11,6 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/integrations/supabase/auth-context";
+import { LoadingSplash } from "@/components/LoadingSplash";
 
 function NotFoundComponent() {
   return (
@@ -74,20 +75,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "DevPay Africa — African Talent. Global Standards." },
+      { name: "description", content: "Hire vetted African software developers, or earn globally with secure escrow payouts via Mobile Money and bank transfer." },
+      { name: "author", content: "DevPay Africa" },
+      { property: "og:title", content: "DevPay Africa" },
+      { property: "og:description", content: "African Talent. Global Standards. Zero Barriers." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -116,6 +115,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <LoadingSplash />
         <Outlet />
         <Toaster />
       </AuthProvider>

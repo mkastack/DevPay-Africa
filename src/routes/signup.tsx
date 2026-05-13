@@ -130,10 +130,24 @@ function SignUp() {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-8">
+            <form
+              onSubmit={handleSubmit}
+              className={`rounded-2xl border bg-card p-8 ${
+                role === "client" ? "border-accent/40 shadow-[0_0_60px_-20px_oklch(0.78_0.15_75/0.5)]" : "border-primary/40 shadow-[var(--shadow-glow)]"
+              }`}
+            >
               <button type="button" onClick={() => setRole(null)} className="text-xs text-muted-foreground mb-4 hover:text-foreground">← Back</button>
-              <h1 className="font-display text-2xl font-bold">Create your {role} account</h1>
-              <p className="text-sm text-muted-foreground mt-1">Free forever. 7% only when you earn.</p>
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium mb-3 ${
+                role === "client" ? "bg-accent/15 text-accent" : "bg-primary/15 text-primary"
+              }`}>
+                {role === "client" ? <><Briefcase className="h-3 w-3" /> Hiring talent</> : <><Code2 className="h-3 w-3" /> Earning globally</>}
+              </div>
+              <h1 className="font-display text-2xl font-bold">
+                {role === "client" ? "Create your client account" : "Create your developer account"}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {role === "client" ? "Post jobs, hire top African talent, pay securely with escrow." : "Free forever. We only take 7% when you get paid."}
+              </p>
               <div className="grid grid-cols-2 gap-2 mt-6">
                 <Button type="button" variant="outline" className="h-10" onClick={() => handleOAuth("google")}>
                   <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/></svg>
@@ -154,12 +168,14 @@ function SignUp() {
                 </div>
               )}
               <div className="space-y-4">
-                <div><Label>Full name</Label><Input required className="mt-1.5" placeholder="Ada Lovelace" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
+                <div><Label>{role === "client" ? "Your name or company" : "Full name"}</Label><Input required className="mt-1.5" placeholder={role === "client" ? "Acme Inc." : "Ada Lovelace"} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
                 <div><Label>Email</Label><Input required type="email" className="mt-1.5" placeholder="you@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
                 <div><Label>Password</Label><Input required type="password" minLength={6} className="mt-1.5" placeholder="At least 6 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
               </div>
-              <Button type="submit" disabled={busy} className="w-full mt-6 bg-[image:var(--gradient-primary)] text-primary-foreground h-11">
-                {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating account…</> : "Create account"}
+              <Button type="submit" disabled={busy} className={`w-full mt-6 h-11 text-primary-foreground ${
+                role === "client" ? "bg-[image:var(--gradient-accent)]" : "bg-[image:var(--gradient-primary)]"
+              }`}>
+                {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating account…</> : role === "client" ? "Start hiring" : "Start earning"}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-4">
                 Already have an account? <Link to="/login" className="text-primary hover:underline">Log in</Link>

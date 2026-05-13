@@ -24,7 +24,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (userId: string) => {
-    const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    let { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    // First sign-in after email confirmation: profile may not exist yet — create from auth metadata.
+    if (!data) {
+      const { data: u } = await supabase.auth.getUser();
+      const meta = (u.user?.user_metadata ?? {}) as { full_name?: string; role?: UserRole; username?: string };
+      const role = (meta.role as UserRole) ?? "developer";
+      const fullName = meta.full_name ?? (u.user?.email?.split("@")[0] ?? "New User");
+      const username = meta.username ?? (u.user?.email?.split("@")[0] ?? `user_${userId.slice(0, 6)}`);
+      const { data: created } = await supabase.from("profiles").insert({
+        id: userId, role, full_name: fullName, username, email: u.user?.email ?? "",
+      }).select().maybeSingle();
+      if (created) {
+        if (role === "developer") await supabase.from("developer_profiles").insert({ user_id: userId });
+        else if (role === "client") await supabase.from("client_profiles").insert({ user_id: userId });
+        data = created;
+      }
+    }
     setProfile((data as Profile) ?? null);
   };
 
@@ -43,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

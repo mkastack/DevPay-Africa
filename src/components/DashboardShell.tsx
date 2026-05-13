@@ -70,10 +70,10 @@ export function DashboardShell({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search…" className="pl-9 w-64 h-9 bg-surface border-border/60" />
             </div>
-            <button className="relative h-9 w-9 rounded-lg border border-border/60 bg-surface flex items-center justify-center hover:border-primary/40">
+            <Link to="/notifications" aria-label="Notifications" className="relative h-9 w-9 rounded-lg border border-border/60 bg-surface flex items-center justify-center hover:border-primary/40">
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
-            </button>
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="h-9 w-9 rounded-full bg-[image:var(--gradient-primary)] flex items-center justify-center font-display font-bold text-primary-foreground text-sm hover:opacity-90">

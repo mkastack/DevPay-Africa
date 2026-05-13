@@ -80,7 +80,10 @@ function WalletPage() {
     - wd.filter((w) => ["pending", "processing", "completed"].includes(w.status))
         .reduce((s, w) => s + Number(w.amount), 0);
 
+  // Payment status breakdown
   const inEscrow = tx.filter((t) => t.type === "escrow" && t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
+  const pendingApproval = tx.filter((t) => (t.type === "milestone" || t.type === "delivery") && t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
+  const releasedPayouts = tx.filter((t) => (t.type === "release" || t.type === "payout") && t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
   const lifetime = tx.filter((t) => t.status === "completed" && ["payment", "release", "deposit", "credit"].includes(t.type)).reduce((s, t) => s + Number(t.amount), 0);
 
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -154,12 +157,24 @@ function WalletPage() {
           </div>
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-6">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">In Escrow</div>
-          <div className="font-display text-3xl font-bold mt-2 text-accent">${inEscrow.toFixed(2)}</div>
-          <div className="text-xs text-muted-foreground mt-1">Held for active projects</div>
-          <div className="mt-4 pt-4 border-t border-border/40">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Payment Status</div>
+          <div className="mt-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-accent" /> In Escrow</div>
+              <div className="font-semibold text-accent">${inEscrow.toFixed(2)}</div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-warning" /> Pending Approval</div>
+              <div className="font-semibold text-warning">${pendingApproval.toFixed(2)}</div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-success" /> Released Payouts</div>
+              <div className="font-semibold text-success">${releasedPayouts.toFixed(2)}</div>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Lifetime</div>
-            <div className="font-display text-2xl font-bold mt-2">${lifetime.toFixed(2)}</div>
+            <div className="font-display text-xl font-bold">${lifetime.toFixed(2)}</div>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Bell, LogOut, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Input } from "./ui/input";
 import { useAuth } from "@/integrations/supabase/auth-context";
+import { MobileBottomNav } from "./MobileBottomNav";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -95,8 +96,9 @@ export function DashboardShell({
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">{children}</main>
       </div>
+      <MobileBottomNav />
     </div>
   );
 }

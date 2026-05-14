@@ -18,7 +18,13 @@ import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClientRouteImport } from './routes/client'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
+import { Route as ClientTalentRouteImport } from './routes/client.talent'
+import { Route as ClientPostJobRouteImport } from './routes/client.post-job'
+import { Route as ClientPayoutsRouteImport } from './routes/client.payouts'
+import { Route as ClientProjectsJobIdRouteImport } from './routes/client.projects.$jobId'
+import { Route as ClientDisputesNewRouteImport } from './routes/client.disputes.new'
 
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
@@ -65,15 +71,45 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientIndexRoute = ClientIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientRoute,
+} as any)
 const JobsJobIdRoute = JobsJobIdRouteImport.update({
   id: '/$jobId',
   path: '/$jobId',
   getParentRoute: () => JobsRoute,
 } as any)
+const ClientTalentRoute = ClientTalentRouteImport.update({
+  id: '/talent',
+  path: '/talent',
+  getParentRoute: () => ClientRoute,
+} as any)
+const ClientPostJobRoute = ClientPostJobRouteImport.update({
+  id: '/post-job',
+  path: '/post-job',
+  getParentRoute: () => ClientRoute,
+} as any)
+const ClientPayoutsRoute = ClientPayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
+  getParentRoute: () => ClientRoute,
+} as any)
+const ClientProjectsJobIdRoute = ClientProjectsJobIdRouteImport.update({
+  id: '/projects/$jobId',
+  path: '/projects/$jobId',
+  getParentRoute: () => ClientRoute,
+} as any)
+const ClientDisputesNewRoute = ClientDisputesNewRouteImport.update({
+  id: '/disputes/new',
+  path: '/disputes/new',
+  getParentRoute: () => ClientRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/client': typeof ClientRoute
+  '/client': typeof ClientRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/jobs': typeof JobsRouteWithChildren
   '/login': typeof LoginRoute
@@ -81,11 +117,16 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/client/payouts': typeof ClientPayoutsRoute
+  '/client/post-job': typeof ClientPostJobRoute
+  '/client/talent': typeof ClientTalentRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
+  '/client/': typeof ClientIndexRoute
+  '/client/disputes/new': typeof ClientDisputesNewRoute
+  '/client/projects/$jobId': typeof ClientProjectsJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/client': typeof ClientRoute
   '/dashboard': typeof DashboardRoute
   '/jobs': typeof JobsRouteWithChildren
   '/login': typeof LoginRoute
@@ -93,12 +134,18 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/client/payouts': typeof ClientPayoutsRoute
+  '/client/post-job': typeof ClientPostJobRoute
+  '/client/talent': typeof ClientTalentRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
+  '/client': typeof ClientIndexRoute
+  '/client/disputes/new': typeof ClientDisputesNewRoute
+  '/client/projects/$jobId': typeof ClientProjectsJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/client': typeof ClientRoute
+  '/client': typeof ClientRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/jobs': typeof JobsRouteWithChildren
   '/login': typeof LoginRoute
@@ -106,7 +153,13 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/client/payouts': typeof ClientPayoutsRoute
+  '/client/post-job': typeof ClientPostJobRoute
+  '/client/talent': typeof ClientTalentRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
+  '/client/': typeof ClientIndexRoute
+  '/client/disputes/new': typeof ClientDisputesNewRoute
+  '/client/projects/$jobId': typeof ClientProjectsJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,11 +173,16 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/client/payouts'
+    | '/client/post-job'
+    | '/client/talent'
     | '/jobs/$jobId'
+    | '/client/'
+    | '/client/disputes/new'
+    | '/client/projects/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/client'
     | '/dashboard'
     | '/jobs'
     | '/login'
@@ -132,7 +190,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/client/payouts'
+    | '/client/post-job'
+    | '/client/talent'
     | '/jobs/$jobId'
+    | '/client'
+    | '/client/disputes/new'
+    | '/client/projects/$jobId'
   id:
     | '__root__'
     | '/'
@@ -144,12 +208,18 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/client/payouts'
+    | '/client/post-job'
+    | '/client/talent'
     | '/jobs/$jobId'
+    | '/client/'
+    | '/client/disputes/new'
+    | '/client/projects/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ClientRoute: typeof ClientRoute
+  ClientRoute: typeof ClientRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   JobsRoute: typeof JobsRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -224,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/': {
+      id: '/client/'
+      path: '/'
+      fullPath: '/client/'
+      preLoaderRoute: typeof ClientIndexRouteImport
+      parentRoute: typeof ClientRoute
+    }
     '/jobs/$jobId': {
       id: '/jobs/$jobId'
       path: '/$jobId'
@@ -231,8 +308,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsJobIdRouteImport
       parentRoute: typeof JobsRoute
     }
+    '/client/talent': {
+      id: '/client/talent'
+      path: '/talent'
+      fullPath: '/client/talent'
+      preLoaderRoute: typeof ClientTalentRouteImport
+      parentRoute: typeof ClientRoute
+    }
+    '/client/post-job': {
+      id: '/client/post-job'
+      path: '/post-job'
+      fullPath: '/client/post-job'
+      preLoaderRoute: typeof ClientPostJobRouteImport
+      parentRoute: typeof ClientRoute
+    }
+    '/client/payouts': {
+      id: '/client/payouts'
+      path: '/payouts'
+      fullPath: '/client/payouts'
+      preLoaderRoute: typeof ClientPayoutsRouteImport
+      parentRoute: typeof ClientRoute
+    }
+    '/client/projects/$jobId': {
+      id: '/client/projects/$jobId'
+      path: '/projects/$jobId'
+      fullPath: '/client/projects/$jobId'
+      preLoaderRoute: typeof ClientProjectsJobIdRouteImport
+      parentRoute: typeof ClientRoute
+    }
+    '/client/disputes/new': {
+      id: '/client/disputes/new'
+      path: '/disputes/new'
+      fullPath: '/client/disputes/new'
+      preLoaderRoute: typeof ClientDisputesNewRouteImport
+      parentRoute: typeof ClientRoute
+    }
   }
 }
+
+interface ClientRouteChildren {
+  ClientPayoutsRoute: typeof ClientPayoutsRoute
+  ClientPostJobRoute: typeof ClientPostJobRoute
+  ClientTalentRoute: typeof ClientTalentRoute
+  ClientIndexRoute: typeof ClientIndexRoute
+  ClientDisputesNewRoute: typeof ClientDisputesNewRoute
+  ClientProjectsJobIdRoute: typeof ClientProjectsJobIdRoute
+}
+
+const ClientRouteChildren: ClientRouteChildren = {
+  ClientPayoutsRoute: ClientPayoutsRoute,
+  ClientPostJobRoute: ClientPostJobRoute,
+  ClientTalentRoute: ClientTalentRoute,
+  ClientIndexRoute: ClientIndexRoute,
+  ClientDisputesNewRoute: ClientDisputesNewRoute,
+  ClientProjectsJobIdRoute: ClientProjectsJobIdRoute,
+}
+
+const ClientRouteWithChildren =
+  ClientRoute._addFileChildren(ClientRouteChildren)
 
 interface JobsRouteChildren {
   JobsJobIdRoute: typeof JobsJobIdRoute
@@ -246,7 +379,7 @@ const JobsRouteWithChildren = JobsRoute._addFileChildren(JobsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ClientRoute: ClientRoute,
+  ClientRoute: ClientRouteWithChildren,
   DashboardRoute: DashboardRoute,
   JobsRoute: JobsRouteWithChildren,
   LoginRoute: LoginRoute,

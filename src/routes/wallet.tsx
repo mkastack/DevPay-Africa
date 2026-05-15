@@ -185,24 +185,24 @@ function WalletPage() {
           <p className="text-[11px] text-muted-foreground mt-1">Click a status to see jobs and jump to the escrow timeline.</p>
           <div className="mt-3 space-y-2">
             {([
-              { key: "escrow",   label: "In Escrow",         icon: ShieldCheck,  color: "accent",  data: buckets.escrow },
-              { key: "pending",  label: "Pending Approval",  icon: Clock,        color: "warning", data: buckets.pending },
-              { key: "released", label: "Released Payouts",  icon: CheckCircle2, color: "success", data: buckets.released },
-            ] as const).map(({ key, label, icon: Icon, color, data }) => {
+              { key: "escrow",   label: "In Escrow",         icon: ShieldCheck,  cls: { ring: "border-accent/50 bg-accent/10",     text: "text-accent" },  data: buckets.escrow },
+              { key: "pending",  label: "Pending Approval",  icon: Clock,        cls: { ring: "border-warning/50 bg-warning/10",   text: "text-warning" }, data: buckets.pending },
+              { key: "released", label: "Released Payouts",  icon: CheckCircle2, cls: { ring: "border-success/50 bg-success/10",   text: "text-success" }, data: buckets.released },
+            ] as const).map(({ key, label, icon: Icon, cls, data }) => {
               const isOpen = active === key;
               return (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setActive(isOpen ? null : key)}
-                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${isOpen ? `border-${color}/50 bg-${color}/10` : "border-border/60 hover:bg-surface/60"}`}
+                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${isOpen ? cls.ring : "border-border/60 hover:bg-surface/60"}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm">
-                      <Icon className={`h-4 w-4 text-${color}`} /> {label}
+                      <Icon className={`h-4 w-4 ${cls.text}`} /> {label}
                       <span className="text-[11px] text-muted-foreground">({data.items.length})</span>
                     </div>
-                    <div className={`font-semibold text-${color} flex items-center gap-1`}>
+                    <div className={`font-semibold ${cls.text} flex items-center gap-1`}>
                       ${data.total.toFixed(2)}
                       <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-90" : ""}`} />
                     </div>

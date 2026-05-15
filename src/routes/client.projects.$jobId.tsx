@@ -6,6 +6,7 @@ import { Loader2, ShieldCheck, Send, FileText, CheckCircle2, AlertTriangle, Arro
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { toast } from "sonner";
+import { EscrowTimeline } from "@/components/EscrowTimeline";
 
 export const Route = createFileRoute("/client/projects/$jobId")({
   head: () => ({ meta: [{ title: "Project — DevPay Africa" }] }),

@@ -141,7 +141,7 @@ function ProjectDetail() {
           )}
         </div>
 
-        <div className="mt-6">
+        <div id="escrow" className="mt-6 scroll-mt-24">
           <EscrowTimeline jobId={jobId} />
         </div>
       </div>

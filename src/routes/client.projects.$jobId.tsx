@@ -140,6 +140,10 @@ function ProjectDetail() {
             </div>
           )}
         </div>
+
+        <div className="mt-6">
+          <EscrowTimeline jobId={jobId} />
+        </div>
       </div>
 
       <aside className="rounded-2xl border border-border/60 bg-card flex flex-col h-[640px]">

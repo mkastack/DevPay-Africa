@@ -50,7 +50,7 @@ function NotificationsPage() {
         { to: "/settings", label: "Settings", icon: Settings },
       ]
     : [
-        { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+        { to: "/client", label: "Overview", icon: LayoutDashboard },
         { to: "/jobs", label: "Jobs", icon: Briefcase },
         { to: "/wallet", label: "Wallet", icon: WalletIcon },
         { to: "/notifications", label: "Notifications", icon: Bell },

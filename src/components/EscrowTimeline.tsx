@@ -29,7 +29,14 @@ const meta: Record<Event["kind"], { icon: typeof ShieldCheck; color: string; rin
 };
 
 export function EscrowTimeline({ jobId }: { jobId: string }) {
+  const { session } = useAuth();
   const [events, setEvents] = useState<Event[] | null>(null);
+  const [reload, setReload] = useState(0);
+
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("quality");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,17 +68,85 @@ export function EscrowTimeline({ jobId }: { jobId: string }) {
       setEvents(list);
     })();
     return () => { cancelled = true; };
-  }, [jobId]);
+  }, [jobId, reload]);
+
+  const submitDispute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user) { toast.error("Sign in required"); return; }
+    if (description.trim().length < 10) { toast.error("Please describe the issue (10+ chars)"); return; }
+    setSubmitting(true);
+    const { error } = await supabase.from("disputes").insert({
+      job_id: jobId,
+      opened_by: session.user.id,
+      reason,
+      description: description.trim(),
+      status: "open",
+    });
+    setSubmitting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Dispute submitted — our team will review");
+    setOpen(false);
+    setDescription("");
+    setReason("quality");
+    setReload((n) => n + 1);
+  };
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-primary" /> Escrow Activity
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">Milestone payments, approvals, and disputes — newest first.</p>
         </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10">
+              <AlertTriangle className="h-3.5 w-3.5 mr-1.5" /> Raise a Dispute
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-card border-border max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-display flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" /> Raise a Dispute
+              </DialogTitle>
+              <DialogDescription>Funds stay in escrow while our mediation team reviews.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={submitDispute} className="space-y-4">
+              <div>
+                <Label>Reason</Label>
+                <Select value={reason} onValueChange={setReason}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="quality">Quality of work</SelectItem>
+                    <SelectItem value="deadline">Missed deadline</SelectItem>
+                    <SelectItem value="communication">Communication breakdown</SelectItem>
+                    <SelectItem value="scope">Scope disagreement</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Textarea
+                  required
+                  rows={5}
+                  className="mt-1.5"
+                  placeholder="Explain what happened, what you expected, and any supporting context…"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={submitting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {submitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Submitting…</> : "Submit dispute"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
       {events === null ? (
         <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>

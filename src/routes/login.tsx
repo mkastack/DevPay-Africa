@@ -23,7 +23,7 @@ function Login() {
   const [needsConfirm, setNeedsConfirm] = useState(false);
 
   useEffect(() => {
-    if (session && profile) navigate({ to: profile.role === "client" ? "/client" : "/dashboard" });
+    if (session && profile) navigate({ to: "/client" });
   }, [session, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,7 +61,7 @@ function Login() {
   const handleOAuth = async (provider: "google" | "github") => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}/client` },
     });
     if (error) toast.error(error.message);
   };

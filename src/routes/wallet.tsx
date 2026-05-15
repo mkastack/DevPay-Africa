@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const nav = [
-  { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { to: "/client", label: "Overview", icon: LayoutDashboard },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/wallet", label: "Wallet", icon: WalletIcon },
   { to: "/profile", label: "Profile", icon: User },

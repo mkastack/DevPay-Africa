@@ -10,6 +10,7 @@ import { ShieldCheck, Clock, DollarSign, CheckCircle2, ArrowRight, Loader2, Mail
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth-context";
+import { EscrowTimeline } from "@/components/EscrowTimeline";
 
 export const Route = createFileRoute("/jobs/$jobId")({
   head: () => ({ meta: [{ title: "Job Details — DevPay Africa" }] }),
@@ -224,6 +225,7 @@ function JobDetail() {
                 <Button asChild><Link to="/login">Sign in</Link></Button>
               </div>
             )}
+            <EscrowTimeline jobId={job.id} />
           </div>
 
           <aside className="space-y-4">

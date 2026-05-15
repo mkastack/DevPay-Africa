@@ -12,7 +12,7 @@ export function MobileBottomNav({ items }: { items?: Item[] }) {
   const initial = (profile?.full_name?.[0] ?? "U").toUpperCase();
 
   const defaults: Item[] = items ?? [
-    { to: profile?.role === "client" ? "/client" : "/dashboard", icon: Home, label: "Home" },
+    { to: "/client", icon: Home, label: "Home" },
     { to: "/jobs", icon: MessageSquare, label: "Jobs" },
     { to: "/wallet", icon: Wallet, label: "Wallet" },
     { to: "/profile", icon: User, label: "Profile" },

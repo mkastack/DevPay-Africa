@@ -182,20 +182,63 @@ function WalletPage() {
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-6">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">Payment Status</div>
-          <div className="mt-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-accent" /> In Escrow</div>
-              <div className="font-semibold text-accent">${inEscrow.toFixed(2)}</div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-warning" /> Pending Approval</div>
-              <div className="font-semibold text-warning">${pendingApproval.toFixed(2)}</div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-success" /> Released Payouts</div>
-              <div className="font-semibold text-success">${releasedPayouts.toFixed(2)}</div>
-            </div>
+          <p className="text-[11px] text-muted-foreground mt-1">Click a status to see jobs and jump to the escrow timeline.</p>
+          <div className="mt-3 space-y-2">
+            {([
+              { key: "escrow",   label: "In Escrow",         icon: ShieldCheck,  color: "accent",  data: buckets.escrow },
+              { key: "pending",  label: "Pending Approval",  icon: Clock,        color: "warning", data: buckets.pending },
+              { key: "released", label: "Released Payouts",  icon: CheckCircle2, color: "success", data: buckets.released },
+            ] as const).map(({ key, label, icon: Icon, color, data }) => {
+              const isOpen = active === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActive(isOpen ? null : key)}
+                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${isOpen ? `border-${color}/50 bg-${color}/10` : "border-border/60 hover:bg-surface/60"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Icon className={`h-4 w-4 text-${color}`} /> {label}
+                      <span className="text-[11px] text-muted-foreground">({data.items.length})</span>
+                    </div>
+                    <div className={`font-semibold text-${color} flex items-center gap-1`}>
+                      ${data.total.toFixed(2)}
+                      <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
+          {active && (
+            <div className="mt-3 rounded-xl border border-border/60 bg-surface/40 divide-y divide-border/40 max-h-56 overflow-y-auto">
+              {buckets[active].items.length === 0 ? (
+                <p className="px-3 py-4 text-xs text-muted-foreground">No jobs in this status yet.</p>
+              ) : (
+                buckets[active].items.map((m) => {
+                  const job = m.job;
+                  const isClient = job?.client_id === session?.user?.id;
+                  const to = isClient ? "/client/projects/$jobId" : "/jobs/$jobId";
+                  return (
+                    <Link
+                      key={m.id}
+                      to={to}
+                      params={{ jobId: m.job_id }}
+                      hash="escrow"
+                      className="flex items-center justify-between px-3 py-2.5 hover:bg-surface transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{job?.title ?? "Untitled job"}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{m.title}</div>
+                      </div>
+                      <div className="text-sm font-semibold ml-3 whitespace-nowrap">${Number(m.amount).toFixed(2)}</div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          )}
           <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Lifetime</div>
             <div className="font-display text-xl font-bold">${lifetime.toFixed(2)}</div>

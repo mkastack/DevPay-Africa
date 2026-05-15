@@ -225,7 +225,7 @@ function JobDetail() {
                 <Button asChild><Link to="/login">Sign in</Link></Button>
               </div>
             )}
-            <EscrowTimeline jobId={job.id} />
+            <div id="escrow" className="scroll-mt-24"><EscrowTimeline jobId={job.id} /></div>
           </div>
 
           <aside className="space-y-4">

@@ -36,7 +36,7 @@ function SignUp() {
         setConfirmSent(email);
       } else {
         toast.success("Account created — welcome!");
-        navigate({ to: role === "client" ? "/client" : "/dashboard" });
+        navigate({ to: "/client" });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Sign up failed";
@@ -62,7 +62,7 @@ function SignUp() {
   const handleOAuth = async (provider: "google" | "github") => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}/client` },
     });
     if (error) toast.error(error.message);
   };

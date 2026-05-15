@@ -18,7 +18,7 @@ export const Route = createFileRoute("/client")({
 });
 
 function ClientLayout() {
-  const { ready } = useRequireAuth("client");
+  const { ready } = useRequireAuth();
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">

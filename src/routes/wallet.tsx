@@ -44,12 +44,25 @@ const badge: Record<string, string> = {
   failed: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
+type MS = {
+  id: string;
+  job_id: string;
+  title: string;
+  amount: number;
+  status: string;
+  job?: { id: string; title: string; client_id: string } | null;
+};
+
+type Bucket = "escrow" | "pending" | "released";
+
 function WalletPage() {
   const { ready } = useRequireAuth();
   const { session } = useAuth();
   const [tx, setTx] = useState<Tx[]>([]);
   const [wd, setWd] = useState<Wd[]>([]);
+  const [ms, setMs] = useState<MS[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [active, setActive] = useState<Bucket | null>(null);
 
   // withdraw form
   const [open, setOpen] = useState(false);
@@ -61,12 +74,14 @@ function WalletPage() {
   const refresh = async () => {
     if (!session?.user) return;
     setLoadingData(true);
-    const [{ data: txs }, { data: wds }] = await Promise.all([
+    const [{ data: txs }, { data: wds }, { data: mss }] = await Promise.all([
       supabase.from("transactions").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(50),
       supabase.from("withdrawals").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("milestones").select("id,job_id,title,amount,status,job:jobs(id,title,client_id)").order("created_at", { ascending: false }),
     ]);
     setTx((txs as Tx[]) ?? []);
     setWd((wds as Wd[]) ?? []);
+    setMs((mss as any[]) ?? []);
     setLoadingData(false);
   };
 
@@ -80,10 +95,19 @@ function WalletPage() {
     - wd.filter((w) => ["pending", "processing", "completed"].includes(w.status))
         .reduce((s, w) => s + Number(w.amount), 0);
 
-  // Payment status breakdown
-  const inEscrow = tx.filter((t) => t.type === "escrow" && t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
-  const pendingApproval = tx.filter((t) => (t.type === "milestone" || t.type === "delivery") && t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
-  const releasedPayouts = tx.filter((t) => (t.type === "release" || t.type === "payout") && t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  // Milestone-based buckets (drives clickable cards)
+  const buckets = useMemo(() => {
+    const inEscrow = ms.filter((m) => ["pending", "in_progress"].includes(m.status));
+    const pending = ms.filter((m) => ["submitted", "approved"].includes(m.status));
+    const released = ms.filter((m) => m.status === "released");
+    const sum = (arr: MS[]) => arr.reduce((s, m) => s + Number(m.amount), 0);
+    return {
+      escrow: { items: inEscrow, total: sum(inEscrow) },
+      pending: { items: pending, total: sum(pending) },
+      released: { items: released, total: sum(released) },
+    };
+  }, [ms]);
+
   const lifetime = tx.filter((t) => t.status === "completed" && ["payment", "release", "deposit", "credit"].includes(t.type)).reduce((s, t) => s + Number(t.amount), 0);
 
   const handleWithdraw = async (e: React.FormEvent) => {

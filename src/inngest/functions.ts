@@ -25,11 +25,9 @@ export const notifyMatchingDevelopers = inngest.createFunction(
         const jobTitleLower = title.toLowerCase();
 
         return developers.filter(dev => {
-          // Match skills
           const devSkills = (dev.skills ?? []).map(s => s.toLowerCase());
           const skillMatch = devSkills.some(s => jobSkillsLower.includes(s));
 
-          // Match title keywords
           const devTitle = (dev.title ?? "").toLowerCase();
           const titleKeywords = jobTitleLower.split(" ");
           const titleMatch = titleKeywords.some(word => word.length > 3 && devTitle.includes(word));
@@ -43,7 +41,6 @@ export const notifyMatchingDevelopers = inngest.createFunction(
         const results = [];
         for (const dev of matchingDevelopers) {
           try {
-            // Write to Supabase system notifications
             const { error } = await supabase.from("notifications").insert({
               user_id: dev.user_id,
               type: "job_match",
@@ -52,7 +49,6 @@ export const notifyMatchingDevelopers = inngest.createFunction(
               link: `/jobs/${jobId}`
             });
 
-            // Dispatch styled HTML transactional email using Resend
             if (dev.profile?.email) {
               await sendJobAlertEmail(
                 dev.profile.email,
@@ -64,7 +60,6 @@ export const notifyMatchingDevelopers = inngest.createFunction(
 
             results.push({ devId: dev.user_id, status: error ? "failed" : "success" });
           } catch (e) {
-            // Quietly report sub-tasks errors to Sentry without killing the loop
             captureException(e, {
               userId: dev.user_id,
               tags: { subtask: "email-dispatch", jobId }
@@ -80,11 +75,74 @@ export const notifyMatchingDevelopers = inngest.createFunction(
         notifications
       };
     } catch (error) {
-      // Capture critical step crash inside Sentry
       captureException(error, {
         tags: { workflow: "notifyMatchingDevelopers", jobId: event.data?.jobId }
       });
       throw error;
     }
+  }
+);
+
+// Send a welcome email when a new user signs up
+export const sendWelcomeEmail = inngest.createFunction(
+  { id: "send-welcome-email" },
+  { event: "user/signed.up" },
+  async ({ event, step }) => {
+    const { email, name, role } = event.data;
+
+    await step.run("send-email", async () => {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "hello@devpayafrica.com",
+          to: email,
+          subject: `Welcome to DevPay Africa, ${name}! 🇬🇭`,
+          html: `
+            <h1>Welcome ${name}!</h1>
+            <p>Your ${role} account is ready.</p>
+            <a href="https://devpayafrica.com/dashboard">
+              Go to your dashboard
+            </a>
+          `,
+        }),
+      });
+    });
+
+    return { success: true };
+  }
+);
+
+// Notify a developer when an escrow payment is released
+export const notifyPaymentReleased = inngest.createFunction(
+  { id: "notify-payment-released" },
+  { event: "payment/released" },
+  async ({ event, step }) => {
+    const { developer_email, developer_name, amount } = event.data;
+
+    await step.run("send-payment-email", async () => {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "noreply@devpayafrica.com",
+          to: developer_email,
+          subject: `💰 GHS ${amount} added to your wallet`,
+          html: `
+            <h1>Payment received, ${developer_name}!</h1>
+            <p>GHS ${amount} has been added to your DevPay wallet.</p>
+            <a href="https://devpayafrica.com/dashboard/wallet">
+              Go to your wallet
+            </a>
+          `,
+        }),
+      });
+    });
   }
 );

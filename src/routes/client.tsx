@@ -1,7 +1,8 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Loader2, LayoutDashboard, Briefcase, CreditCard, ShieldCheck, Settings } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
+import { useAuthStore } from "@/lib/stores/auth-store";
 
 export const clientNav = [
   { to: "/client", label: "Overview", icon: LayoutDashboard },
@@ -12,6 +13,15 @@ export const clientNav = [
 ];
 
 export const Route = createFileRoute("/client")({
+  beforeLoad: () => {
+    const { user, isAuthenticated } = useAuthStore.getState();
+    if (!isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    if (user?.role !== "client") {
+      throw redirect({ to: "/developer" });
+    }
+  },
   head: () => ({ meta: [{ title: "Hirer Dashboard — DevPay Africa" }] }),
   component: ClientLayout,
 });

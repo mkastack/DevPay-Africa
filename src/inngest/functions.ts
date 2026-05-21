@@ -1,5 +1,5 @@
 import { inngest } from "./client";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseServer as supabase } from "@/integrations/supabase/server";
 import { sendJobAlertEmail } from "@/integrations/resend";
 import { captureException } from "@/integrations/sentry";
 

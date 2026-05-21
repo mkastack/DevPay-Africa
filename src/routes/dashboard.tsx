@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useAuth } from "@/integrations/supabase/auth-context";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { Loader2 } from "lucide-react";
 
@@ -15,11 +16,12 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardDispatcher() {
-  const { user: profile, isLoading: loading } = useAuthStore();
+  const { profile, session, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (loading) return;
+    if (!session) return;
     if (profile) {
       if (profile.role === "developer") {
         navigate({ to: "/developer" });
@@ -27,7 +29,7 @@ function DashboardDispatcher() {
         navigate({ to: "/client" });
       }
     }
-  }, [profile, loading, navigate]);
+  }, [profile, session, loading, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

@@ -67,6 +67,10 @@ function SignUp() {
   };
 
   const handleOAuth = async (provider: "google" | "github") => {
+    if (role) {
+      localStorage.setItem("devpay_oauth_role", role);
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}/dashboard` },

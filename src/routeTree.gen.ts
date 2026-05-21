@@ -29,6 +29,7 @@ import { Route as ClientTalentRouteImport } from './routes/client.talent'
 import { Route as ClientPostJobRouteImport } from './routes/client.post-job'
 import { Route as ClientPayoutsRouteImport } from './routes/client.payouts'
 import { Route as ClientActiveContractsRouteImport } from './routes/client.active-contracts'
+import { Route as ApiInngestRouteImport } from './routes/api/inngest'
 import { Route as ClientProjectsJobIdRouteImport } from './routes/client.projects.$jobId'
 import { Route as ClientDisputesNewRouteImport } from './routes/client.disputes.new'
 
@@ -132,6 +133,11 @@ const ClientActiveContractsRoute = ClientActiveContractsRouteImport.update({
   path: '/active-contracts',
   getParentRoute: () => ClientRoute,
 } as any)
+const ApiInngestRoute = ApiInngestRouteImport.update({
+  id: '/api/inngest',
+  path: '/api/inngest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientProjectsJobIdRoute = ClientProjectsJobIdRouteImport.update({
   id: '/projects/$jobId',
   path: '/projects/$jobId',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/api/inngest': typeof ApiInngestRoute
   '/client/active-contracts': typeof ClientActiveContractsRoute
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/api/inngest': typeof ApiInngestRoute
   '/client/active-contracts': typeof ClientActiveContractsRoute
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/api/inngest': typeof ApiInngestRoute
   '/client/active-contracts': typeof ClientActiveContractsRoute
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/api/inngest'
     | '/client/active-contracts'
     | '/client/payouts'
     | '/client/post-job'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/api/inngest'
     | '/client/active-contracts'
     | '/client/payouts'
     | '/client/post-job'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/api/inngest'
     | '/client/active-contracts'
     | '/client/payouts'
     | '/client/post-job'
@@ -298,6 +310,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   SignupRoute: typeof SignupRoute
   WalletRoute: typeof WalletRoute
+  ApiInngestRoute: typeof ApiInngestRoute
   TalentUserIdRoute: typeof TalentUserIdRoute
 }
 
@@ -443,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientActiveContractsRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/api/inngest': {
+      id: '/api/inngest'
+      path: '/api/inngest'
+      fullPath: '/api/inngest'
+      preLoaderRoute: typeof ApiInngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/projects/$jobId': {
       id: '/client/projects/$jobId'
       path: '/projects/$jobId'
@@ -520,6 +540,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   SignupRoute: SignupRoute,
   WalletRoute: WalletRoute,
+  ApiInngestRoute: ApiInngestRoute,
   TalentUserIdRoute: TalentUserIdRoute,
 }
 export const routeTree = rootRouteImport

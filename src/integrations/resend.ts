@@ -30,7 +30,8 @@ export async function sendEmail({ to, subject, html }: SendEmailParams) {
         Authorization: `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: "DevPay Africa <payouts@devpay.africa>",
+        from: "DevPay Africa <hello@devpay.africa>",
+        reply_to: "support@devpay.africa",
         to: [to],
         subject,
         html

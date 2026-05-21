@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, type Profile, type UserRole } from "./client";
+import { useAuthStore } from "@/lib/stores/auth-store";
+
+const OAUTH_ROLE_KEY = "devpay_oauth_role";
 
 type SignUpResult = { needsConfirmation: boolean; email: string };
 
@@ -29,7 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!data) {
       const { data: u } = await supabase.auth.getUser();
       const meta = (u.user?.user_metadata ?? {}) as { full_name?: string; role?: UserRole; username?: string };
-      const role = (meta.role as UserRole) ?? "developer";
+      const localRole = typeof window !== "undefined" ? (localStorage.getItem(OAUTH_ROLE_KEY) as UserRole | null) : null;
+      const role = (meta.role as UserRole) ?? localRole ?? "developer";
       const fullName = meta.full_name ?? (u.user?.email?.split("@")[0] ?? "New User");
       const username = meta.username ?? (u.user?.email?.split("@")[0] ?? `user_${userId.slice(0, 6)}`);
       const { data: created } = await supabase.from("profiles").insert({
@@ -40,8 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         else if (role === "client") await supabase.from("client_profiles").insert({ user_id: userId });
         data = created;
       }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(OAUTH_ROLE_KEY);
+      }
     }
-    setProfile((data as Profile) ?? null);
+
+    const profileData = (data as Profile) ?? null;
+    setProfile(profileData);
+    if (profileData) {
+      useAuthStore.getState().setUser(profileData);
+    } else {
+      useAuthStore.getState().logout();
+    }
   };
 
   useEffect(() => {
@@ -101,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    useAuthStore.getState().logout();
   };
 
   const resendConfirmation = async (email: string) => {

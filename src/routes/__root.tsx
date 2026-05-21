@@ -138,7 +138,7 @@ function RootComponent() {
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (profile) {
           // @ts-ignore - Ignore profile type mismatches temporarily
@@ -165,7 +165,7 @@ function RootComponent() {
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
-            .single();
+            .maybeSingle();
 
           if (profile) {
             // @ts-ignore - Ignore profile type mismatches temporarily

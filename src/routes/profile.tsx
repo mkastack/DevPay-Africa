@@ -55,19 +55,42 @@ function ProfilePage() {
   const [client, setClient] = useState<ClientProfile>({ user_id: "" });
 
   useEffect(() => {
-    if (!session?.user || !profile) return;
-    setFullName(profile.full_name ?? "");
-    setAvatarUrl(profile.avatar_url ?? "");
+    let mounted = true;
     (async () => {
-      if (profile.role === "developer") {
-        const { data } = await supabase.from("developer_profiles").select("*").eq("user_id", session.user.id).maybeSingle();
-        setDev((data as DevProfile) ?? { user_id: session.user.id, skills: [] });
-      } else if (profile.role === "client") {
-        const { data } = await supabase.from("client_profiles").select("*").eq("user_id", session.user.id).maybeSingle();
-        setClient((data as ClientProfile) ?? { user_id: session.user.id });
+      if (!session?.user) {
+        if (mounted) setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      // If profile is missing, try to refresh it (may be created on first sign-in)
+      if (!profile) {
+        try {
+          await refreshProfile();
+        } catch (err) {
+          // ignore and continue to show UI allowing manual save
+        }
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      setFullName(profile.full_name ?? "");
+      setAvatarUrl(profile.avatar_url ?? "");
+
+      try {
+        if (profile.role === "developer") {
+          const { data, error } = await supabase.from("developer_profiles").select("*").eq("user_id", session.user.id).maybeSingle();
+          if (!error && mounted) setDev((data as DevProfile) ?? { user_id: session.user.id, skills: [] });
+        } else if (profile.role === "client") {
+          const { data, error } = await supabase.from("client_profiles").select("*").eq("user_id", session.user.id).maybeSingle();
+          if (!error && mounted) setClient((data as ClientProfile) ?? { user_id: session.user.id });
+        }
+      } catch (err) {
+        // ignore DB fetch errors and allow user to save
+      } finally {
+        if (mounted) setLoading(false);
+      }
     })();
+    return () => { mounted = false; };
   }, [session?.user, profile]);
 
   const addSkill = () => {

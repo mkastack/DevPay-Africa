@@ -1,23 +1,10 @@
-import { createAPIFileRoute } from "@tanstack/react-start/api";
-import { serve } from "inngest/h3";
-import { inngest } from "../../inngest/client";
-import {
-  notifyMatchingDevelopers,
-  sendWelcomeEmail,
-  notifyPaymentReleased,
-} from "../../inngest/functions";
+import { createFileRoute } from "@tanstack/react-router";
 
-const handler = serve({
-  client: inngest,
-  functions: [
-    notifyMatchingDevelopers,
-    sendWelcomeEmail,
-    notifyPaymentReleased,
-  ],
-});
+// Temporary placeholder route to avoid dev-server import errors when
+// @tanstack/start/api isn't available in node_modules. This stub prevents
+// SSR crashes; restore the proper Inngest handler once the correct
+// TanStack Start API package is installed.
 
-export const APIRoute = createAPIFileRoute("/api/inngest")({
-  GET: handler,
-  POST: handler,
-  PUT: handler,
+export const Route = createFileRoute('/api/inngest')({
+  component: () => null,
 });

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 import {
   Sparkles, ShieldCheck, Smartphone, Bot, BadgeCheck, MessageSquare,
   Check, X, ArrowRight, Star, Users, Globe, DollarSign, Percent,
@@ -270,6 +271,8 @@ function Landing() {
           </Button>
         </div>
       </section>
+
+      <MobileBottomNav />
 
       <SiteFooter />
     </div>

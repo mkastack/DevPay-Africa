@@ -194,8 +194,10 @@ function Landing() {
         <div className="text-center mb-10">
           <h2 className="font-display text-4xl md:text-5xl font-bold">Why DevPay <span className="text-gradient-brand">wins</span></h2>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card max-w-4xl mx-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 px-4 rounded-2xl border border-border/60 bg-card max-w-4xl mx-auto">
+          {/* Mobile hint: table is horizontally scrollable */}
+          <div className="text-xs text-muted-foreground text-right pr-2 pb-2 md:hidden">Swipe to view more →</div>
+          <table className="min-w-[680px] md:min-w-full w-full text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-surface">
                 <th className="text-left px-6 py-4 font-medium text-muted-foreground">Feature</th>

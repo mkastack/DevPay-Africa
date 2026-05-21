@@ -52,6 +52,14 @@ function PostJob() {
   const totalMilestones = data.milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0);
   const progress = (step / 4) * 100;
 
+  const experienceLevelOptions = [
+    { id: "entry", title: "Entry", desc: "Junior talent or simple tasks.", dbValue: "Entry" },
+    { id: "intermediate", title: "Intermediate", desc: "Solid industry experience.", dbValue: "Intermediate" },
+    { id: "expert", title: "Expert", desc: "Critical systems & architectural lead.", dbValue: "Expert" },
+  ] as const;
+
+  const experienceLevelMap = Object.fromEntries(experienceLevelOptions.map((item) => [item.id, item.dbValue])) as Record<"entry" | "intermediate" | "expert", string>;
+
   const addSkill = (s: string) => {
     const v = s.trim();
     if (!v || data.skills.includes(v)) return;
@@ -77,21 +85,32 @@ function PostJob() {
     setBusy(true);
     try {
       const budgetTotal = Number(data.budget) || totalMilestones;
-      const { data: job, error } = await supabase.from("jobs").insert({
+      const dbExperienceCandidates = [experienceLevelMap[data.level], data.level].filter(
+        (v, index, self) => v && self.indexOf(v) === index
+      );
+      const payloadBase = {
         client_id: session.user.id,
         title: data.title,
         description: data.description,
         budget_min: budgetTotal,
         budget_max: budgetTotal,
+        budget_type: "fixed",
         duration: data.duration || null,
-        experience_level: data.level,
         status: "open",
-      }).select().single();
-      if (error || !job) { 
+      };
+
+      let jobResult = { data: null as any, error: null as any };
+      for (const experience_level of dbExperienceCandidates) {
+        jobResult = await supabase.from("jobs").insert({ ...payloadBase, experience_level }).select().single();
+        if (!jobResult.error && jobResult.data) break;
+      }
+
+      const { data: job, error } = jobResult;
+      if (error || !job) {
         captureException(error || new Error("Failed to insert job row"), { userId: session.user.id });
-        setBusy(false); 
-        toast.error(error?.message ?? "Failed to post job"); 
-        return; 
+        setBusy(false);
+        toast.error(error?.message ?? "Failed to post job");
+        return;
       }
 
       const jobId = (job as { id: string }).id;
@@ -261,11 +280,7 @@ function PostJob() {
               <div className="mt-8">
                 <Label>Required Experience Level</Label>
                 <div className="grid sm:grid-cols-3 gap-3 mt-1.5">
-                  {[
-                    { id: "entry", title: "Entry", desc: "Junior talent or simple tasks." },
-                    { id: "intermediate", title: "Intermediate", desc: "Solid industry experience." },
-                    { id: "expert", title: "Expert", desc: "Critical systems & architectural lead." },
-                  ].map((l) => {
+                  {experienceLevelOptions.map((l) => {
                     const active = data.level === l.id;
                     return (
                       <button key={l.id} type="button" onClick={() => setData({ ...data, level: l.id as typeof data.level })}
@@ -319,7 +334,7 @@ function PostJob() {
                 <div className="font-display text-xl font-bold mt-1">{data.title}</div>
                 <div className="grid sm:grid-cols-2 gap-4 mt-4">
                   <div><div className="text-xs text-muted-foreground uppercase">Category</div><div className="capitalize">{categories.find((c) => c.id === data.category)?.label}</div></div>
-                  <div><div className="text-xs text-muted-foreground uppercase">Experience</div><div className="capitalize">{data.level}</div></div>
+                  <div><div className="text-xs text-muted-foreground uppercase">Experience</div><div>{experienceLevelMap[data.level] ?? data.level}</div></div>
                   <div><div className="text-xs text-muted-foreground uppercase">Duration</div><div>{data.duration || "Flexible"}</div></div>
                   <div><div className="text-xs text-muted-foreground uppercase">Skills</div><div>{data.skills.join(", ") || "—"}</div></div>
                 </div>

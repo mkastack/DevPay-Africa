@@ -4,8 +4,11 @@ import { Button } from "./ui/button";
 import { useAuth } from "@/integrations/supabase/auth-context";
 
 export function SiteHeader() {
-  const { session, profile } = useAuth();
+  const { session, profile, loading } = useAuth();
+  // Only navigate to dashboard once profile is loaded and role is confirmed
   const dashHref = profile?.role === "developer" ? "/developer" : "/client";
+  const canShowDashboard = session && profile && !loading;
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -17,11 +20,17 @@ export function SiteHeader() {
           <Link to="/jobs" className="hover:text-foreground transition-colors">Browse Jobs</Link>
         </nav>
         <div className="flex items-center gap-2">
-          {session ? (
+          {canShowDashboard ? (
             <Button asChild size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)]">
               <Link to={dashHref}>Dashboard</Link>
             </Button>
+          ) : session ? (
+            // Session exists but profile is still loading — show loading state
+            <Button disabled size="sm" variant="outline">
+              <span className="animate-pulse">Loading...</span>
+            </Button>
           ) : (
+            // Not signed in — show login/signup
             <>
               <Button asChild variant="ghost" size="sm">
                 <Link to="/login">Log in</Link>

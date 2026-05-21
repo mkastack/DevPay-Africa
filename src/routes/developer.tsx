@@ -1,7 +1,7 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Loader2, LayoutDashboard, FileText, Briefcase, CreditCard, User, Settings } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
-import { useAuthStore } from "@/lib/stores/auth-store";
+import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
 
 export const developerNav = [
   { to: "/developer", label: "Overview", icon: LayoutDashboard },
@@ -13,22 +13,24 @@ export const developerNav = [
 ];
 
 export const Route = createFileRoute("/developer")({
-  beforeLoad: () => {
-    const { user, isAuthenticated } = useAuthStore.getState();
-
-    if (!isAuthenticated) {
-      throw redirect({ to: "/login" });
-    }
-
-    if (user?.role !== "developer") {
-      throw redirect({ to: "/client" });
-    }
-  },
   head: () => ({ meta: [{ title: "Developer Dashboard — DevPay Africa" }] }),
   component: DeveloperLayout,
 });
 
 function DeveloperLayout() {
+  const { session, profile } = useRequireAuth("developer");
+  
+  // Redirect if not authenticated or role mismatch
+  if (!session) {
+    return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+  
+  if (profile && profile.role !== "developer") {
+    // Wrong role — redirect to client
+    window.location.href = "/client";
+    return null;
+  }
+  
   return (
     <DashboardShell nav={developerNav} title="Developer Workspace">
       <Outlet />

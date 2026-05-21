@@ -25,6 +25,8 @@ import { Route as TalentUserIdRouteImport } from './routes/talent.$userId'
 import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
 import { Route as DeveloperProposalsRouteImport } from './routes/developer.proposals'
 import { Route as DeveloperActiveJobsRouteImport } from './routes/developer.active-jobs'
+import { Route as DebugImpersonateRouteImport } from './routes/debug/impersonate'
+import { Route as DebugAuthStateRouteImport } from './routes/debug/auth-state'
 import { Route as ClientTalentRouteImport } from './routes/client.talent'
 import { Route as ClientPostJobRouteImport } from './routes/client.post-job'
 import { Route as ClientPayoutsRouteImport } from './routes/client.payouts'
@@ -113,6 +115,16 @@ const DeveloperActiveJobsRoute = DeveloperActiveJobsRouteImport.update({
   path: '/active-jobs',
   getParentRoute: () => DeveloperRoute,
 } as any)
+const DebugImpersonateRoute = DebugImpersonateRouteImport.update({
+  id: '/debug/impersonate',
+  path: '/debug/impersonate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DebugAuthStateRoute = DebugAuthStateRouteImport.update({
+  id: '/debug/auth-state',
+  path: '/debug/auth-state',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientTalentRoute = ClientTalentRouteImport.update({
   id: '/talent',
   path: '/talent',
@@ -165,6 +177,8 @@ export interface FileRoutesByFullPath {
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
   '/client/talent': typeof ClientTalentRoute
+  '/debug/auth-state': typeof DebugAuthStateRoute
+  '/debug/impersonate': typeof DebugImpersonateRoute
   '/developer/active-jobs': typeof DeveloperActiveJobsRoute
   '/developer/proposals': typeof DeveloperProposalsRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
@@ -188,6 +202,8 @@ export interface FileRoutesByTo {
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
   '/client/talent': typeof ClientTalentRoute
+  '/debug/auth-state': typeof DebugAuthStateRoute
+  '/debug/impersonate': typeof DebugImpersonateRoute
   '/developer/active-jobs': typeof DeveloperActiveJobsRoute
   '/developer/proposals': typeof DeveloperProposalsRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
@@ -214,6 +230,8 @@ export interface FileRoutesById {
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
   '/client/talent': typeof ClientTalentRoute
+  '/debug/auth-state': typeof DebugAuthStateRoute
+  '/debug/impersonate': typeof DebugImpersonateRoute
   '/developer/active-jobs': typeof DeveloperActiveJobsRoute
   '/developer/proposals': typeof DeveloperProposalsRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
@@ -241,6 +259,8 @@ export interface FileRouteTypes {
     | '/client/payouts'
     | '/client/post-job'
     | '/client/talent'
+    | '/debug/auth-state'
+    | '/debug/impersonate'
     | '/developer/active-jobs'
     | '/developer/proposals'
     | '/jobs/$jobId'
@@ -264,6 +284,8 @@ export interface FileRouteTypes {
     | '/client/payouts'
     | '/client/post-job'
     | '/client/talent'
+    | '/debug/auth-state'
+    | '/debug/impersonate'
     | '/developer/active-jobs'
     | '/developer/proposals'
     | '/jobs/$jobId'
@@ -289,6 +311,8 @@ export interface FileRouteTypes {
     | '/client/payouts'
     | '/client/post-job'
     | '/client/talent'
+    | '/debug/auth-state'
+    | '/debug/impersonate'
     | '/developer/active-jobs'
     | '/developer/proposals'
     | '/jobs/$jobId'
@@ -311,6 +335,8 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   WalletRoute: typeof WalletRoute
   ApiInngestRoute: typeof ApiInngestRoute
+  DebugAuthStateRoute: typeof DebugAuthStateRoute
+  DebugImpersonateRoute: typeof DebugImpersonateRoute
   TalentUserIdRoute: typeof TalentUserIdRoute
 }
 
@@ -428,6 +454,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeveloperActiveJobsRouteImport
       parentRoute: typeof DeveloperRoute
     }
+    '/debug/impersonate': {
+      id: '/debug/impersonate'
+      path: '/debug/impersonate'
+      fullPath: '/debug/impersonate'
+      preLoaderRoute: typeof DebugImpersonateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/debug/auth-state': {
+      id: '/debug/auth-state'
+      path: '/debug/auth-state'
+      fullPath: '/debug/auth-state'
+      preLoaderRoute: typeof DebugAuthStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/talent': {
       id: '/client/talent'
       path: '/talent'
@@ -541,6 +581,8 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   WalletRoute: WalletRoute,
   ApiInngestRoute: ApiInngestRoute,
+  DebugAuthStateRoute: DebugAuthStateRoute,
+  DebugImpersonateRoute: DebugImpersonateRoute,
   TalentUserIdRoute: TalentUserIdRoute,
 }
 export const routeTree = rootRouteImport

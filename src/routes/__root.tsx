@@ -16,6 +16,7 @@ import { LoadingSplash } from "@/components/LoadingSplash";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { AuthProvider } from "@/integrations/supabase/auth-context";
 
 import { initSentry, captureException } from "@/integrations/sentry";
 import * as Sentry from "@sentry/react";
@@ -209,10 +210,12 @@ function RootComponent() {
       )}
     >
       <QueryClientProvider client={queryClient}>
-        <LoadingSplash />
-        <ScrollRestoration />
-        <Outlet />
-        <Toaster />
+        <AuthProvider>
+          <LoadingSplash />
+          <ScrollRestoration />
+          <Outlet />
+          <Toaster />
+        </AuthProvider>
       </QueryClientProvider>
     </SentryErrorBoundary>
   );

@@ -19,7 +19,8 @@ export default defineConfig({
         org: process.env.SENTRY_ORG || "devpay-africa",
         project: process.env.SENTRY_PROJECT || "devpay-africa-app",
         authToken: process.env.SENTRY_AUTH_TOKEN || "",
-        disable: !process.env.SENTRY_AUTH_TOKEN, // Disable upload if no auth token is provided
+        // Only enable Sentry uploads in production and when an auth token is present.
+        disable: process.env.NODE_ENV !== "production" || !process.env.SENTRY_AUTH_TOKEN,
       }),
     ],
     build: {

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { captureException } from "@/integrations/sentry";
 import { sendPaymentConfirmationEmail } from "@/integrations/resend";
+import { initiateEscrowPayment, verifyPaystackPayment, calculateTotalWithFee } from "@/integrations/paystack";
 
 export const Route = createFileRoute("/client/post-job")({
   head: () => ({ meta: [{ title: "Post a Job — DevPay Africa" }] }),
@@ -85,6 +86,42 @@ function PostJob() {
     setBusy(true);
     try {
       const budgetTotal = Number(data.budget) || totalMilestones;
+      const { total: totalWithFee } = calculateTotalWithFee(budgetTotal);
+
+      // Step 1: Initiate Paystack payment for escrow funding
+      let paymentReference = "";
+      try {
+        paymentReference = await initiateEscrowPayment({
+          email: session.user.email || "",
+          amount: totalWithFee,
+          jobId: "temp",
+          clientId: session.user.id,
+          firstName: profile?.full_name?.split(" ")[0] || "Client",
+          lastName: profile?.full_name?.split(" ")[1] || "",
+          description: `Escrow funding for job: ${data.title}`,
+        });
+        
+        // Verify the payment
+        const verification = await verifyPaystackPayment(paymentReference);
+        if (verification.data?.status !== "success") {
+          toast.error("Payment verification failed. Please try again.");
+          setBusy(false);
+          return;
+        }
+        
+        toast.success("Payment received! Creating job posting...");
+      } catch (paymentError) {
+        const msg = paymentError instanceof Error ? paymentError.message : "Payment failed";
+        toast.error(msg);
+        captureException(paymentError instanceof Error ? paymentError : new Error(msg), {
+          userId: session.user.id,
+          tags: { action: "payment-error" },
+        });
+        setBusy(false);
+        return;
+      }
+
+      // Step 2: Create the job posting
       const dbExperienceCandidates = [experienceLevelMap[data.level], data.level].filter(
         (v, index, self) => v && self.indexOf(v) === index
       );
@@ -115,7 +152,17 @@ function PostJob() {
 
       const jobId = (job as { id: string }).id;
 
-      // milestones
+      // Step 3: Store payment reference in a transaction record (optional but recommended)
+      supabase.from("transactions").insert({
+        user_id: session.user.id,
+        type: "deposit",
+        amount: totalWithFee,
+        status: "completed",
+        reference: paymentReference,
+        job_id: jobId,
+      }).then(() => console.log("Transaction logged:", paymentReference)).catch((err: any) => console.log("Transaction log error (non-critical):", err));
+
+      // Step 4: Insert milestones
       const ms = data.milestones.filter((m) => m.title && m.amount).map((m, i) => ({
         job_id: jobId,
         title: m.title,
@@ -131,7 +178,7 @@ function PostJob() {
         }
       }
 
-      // skills
+      // Step 5: Link skills to job
       if (data.skills.length) {
         const { data: existing } = await supabase.from("skills").select("id,name").in("name", data.skills);
         const map = new Map((existing ?? []).map((s: { id: string; name: string }) => [s.name, s.id]));
@@ -144,17 +191,17 @@ function PostJob() {
         }
       }
 
-      // Dispatch Payment confirmation email via Resend in the background
+      // Step 6: Send payment confirmation email
       if (session.user.email) {
         sendPaymentConfirmationEmail(
           session.user.email,
           profile?.full_name || "Client",
-          budgetTotal,
+          totalWithFee,
           jobId
         );
       }
 
-      // Quietly dispatch background matching task (Inngest simulated background executor)
+      // Step 7: Dispatch developer matching task in background
       (async () => {
         try {
           const { data: devProfiles } = await supabase
@@ -166,15 +213,14 @@ function PostJob() {
             const jobTitleLower = data.title.toLowerCase();
             
             const matching = devProfiles.filter(dev => {
-              const devSkills = (dev.skills ?? []).map(s => s.toLowerCase());
-              const skillMatch = devSkills.some(s => jobSkillsLower.includes(s));
+              const devSkills = (dev.skills ?? []).map((s: string) => s.toLowerCase());
+              const skillMatch = devSkills.some((s: string) => jobSkillsLower.includes(s));
               const devTitle = (dev.title ?? "").toLowerCase();
               const titleKeywords = jobTitleLower.split(" ");
-              const titleMatch = titleKeywords.some(word => word.length > 3 && devTitle.includes(word));
+              const titleMatch = titleKeywords.some((word: string) => word.length > 3 && devTitle.includes(word));
               return skillMatch || titleMatch;
             });
 
-            // Create notifications in parallel background processes
             matching.forEach(async (dev) => {
               await supabase.from("notifications").insert({
                 user_id: dev.user_id,
@@ -192,7 +238,7 @@ function PostJob() {
       })();
 
       setBusy(false);
-      toast.success("Job posted & escrow ready");
+      toast.success("Job posted & escrow secured! Redirecting to project page...");
       navigate({ to: "/client/projects/$jobId", params: { jobId } });
     } catch (e: any) {
       captureException(e, { userId: session.user.id });
@@ -361,7 +407,7 @@ function PostJob() {
               </Button>
             ) : (
               <Button disabled={busy} onClick={submit} className="bg-[image:var(--gradient-primary)] text-primary-foreground">
-                {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Posting…</> : <>Post Job & Fund Escrow <ArrowRight className="h-4 w-4 ml-2" /></>}
+                {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing Payment…</> : <>Fund & Post Job <ArrowRight className="h-4 w-4 ml-2" /></>}
               </Button>
             )}
           </div>
@@ -375,13 +421,16 @@ function PostJob() {
           </div>
           {step === 4 && (
             <div className="rounded-2xl border border-border/60 bg-card p-5">
-              <div className="font-display font-semibold mb-3">Payment Summary</div>
+              <div className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Payment Summary</div>
               <div className="text-sm space-y-2">
                 <div className="flex justify-between"><span className="text-muted-foreground">Job Budget</span><span>${(Number(data.budget) || totalMilestones).toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Service Fee (7%)</span><span>${(((Number(data.budget) || totalMilestones) * 0.07)).toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Escrow Service Fee (7%)</span><span>${(((Number(data.budget) || totalMilestones) * 0.07)).toFixed(2)}</span></div>
                 <div className="border-t border-border/40 pt-2 flex justify-between font-display font-bold text-base">
                   <span>Total to Fund</span><span className="text-primary">${(((Number(data.budget) || totalMilestones) * 1.07)).toFixed(2)}</span>
                 </div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/30">
+                💳 Powered by Paystack • Secure card payments accepted globally
               </div>
             </div>
           )}

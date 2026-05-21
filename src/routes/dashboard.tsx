@@ -9,12 +9,29 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardDispatcher,
 });
 
+
 function DashboardDispatcher() {
   const { profile, session, loading } = useAuth();
   const navigate = useNavigate();
 
+  // dev override: allow forcing a role via query `?dev_role=developer` or localStorage `devpay_dev_role`
+  const url = typeof window !== "undefined" ? new URL(window.location.href) : null;
+  const devRole = url?.searchParams.get("dev_role") ?? (typeof window !== "undefined" ? localStorage.getItem("devpay_dev_role") : null);
+
+  // Helpful debug logs for diagnosing spinner state
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.debug("DashboardDispatcher state:", { loading, session, profile, devRole });
+  }, [loading, session, profile, devRole]);
+
   useEffect(() => {
     if (loading) return;
+    // If a dev override is present, use it immediately (dev helper)
+    if (devRole) {
+      if (devRole === "developer") navigate({ to: "/developer" });
+      else navigate({ to: "/client" });
+      return;
+    }
     if (!session) return;
     if (profile) {
       if (profile.role === "developer") {
@@ -23,7 +40,7 @@ function DashboardDispatcher() {
         navigate({ to: "/client" });
       }
     }
-  }, [profile, session, loading, navigate]);
+  }, [profile, session, loading, navigate, devRole]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

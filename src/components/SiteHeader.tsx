@@ -5,9 +5,9 @@ import { useAuth } from "@/integrations/supabase/auth-context";
 
 export function SiteHeader() {
   const { session, profile, loading } = useAuth();
-  // Only navigate to dashboard once profile is loaded and role is confirmed
+  // Navigate to dashboard once session exists (profile loads in the background on the dashboard page)
   const dashHref = profile?.role === "developer" ? "/developer" : "/client";
-  const canShowDashboard = session && profile && !loading;
+  const hasSession = !!session;
   
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
@@ -20,14 +20,9 @@ export function SiteHeader() {
           <Link to="/jobs" className="hover:text-foreground transition-colors">Browse Jobs</Link>
         </nav>
         <div className="flex items-center gap-2">
-          {canShowDashboard ? (
-            <Button asChild size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)]">
+          {hasSession ? (
+            <Button asChild size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)]" disabled={loading}>
               <Link to={dashHref}>Dashboard</Link>
-            </Button>
-          ) : session ? (
-            // Session exists but profile is still loading — show loading state
-            <Button disabled size="sm" variant="outline">
-              <span className="animate-pulse">Loading...</span>
             </Button>
           ) : (
             // Not signed in — show login/signup

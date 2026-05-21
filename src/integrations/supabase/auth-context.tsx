@@ -61,14 +61,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (s?.user) setTimeout(() => loadProfile(s.user.id), 0);
-      else setProfile(null);
+      if (s?.user) {
+        loadProfile(s.user.id).finally(() => setLoading(false));
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
-      if (s?.user) loadProfile(s.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+      if (s?.user) {
+        // Add a 5-second timeout to prevent infinite loading
+        const timeout = setTimeout(() => {
+          setLoading(false);
+        }, 5000);
+        loadProfile(s.user.id).finally(() => {
+          clearTimeout(timeout);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => sub.subscription.unsubscribe();

@@ -60,10 +60,10 @@ function Landing() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="bg-[image:var(--gradient-primary)] text-primary-foreground hover:opacity-90 shadow-[var(--shadow-glow)] h-12 px-6">
-              <Link to="/signup">Hire a Developer <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link to="/dashboard">Hire a Developer <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 px-6 border-border/60 hover:bg-surface">
-              <Link to="/signup">Start Earning</Link>
+              <Link to="/dashboard">Start Earning</Link>
             </Button>
           </div>
 
@@ -78,16 +78,16 @@ function Landing() {
                   <div className="h-2.5 w-2.5 rounded-full bg-success/60" />
                   <div className="ml-3 text-xs text-muted-foreground">app.devpay.africa/dashboard</div>
                 </div>
-                <div className="grid grid-cols-4 gap-3 p-4">
+                <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
                   {[
                     { l: "Total Earned", v: "$24,580", c: "text-primary" },
                     { l: "Active Jobs", v: "7", c: "text-accent" },
                     { l: "Proposals", v: "12", c: "text-foreground" },
                     { l: "Rating", v: "4.98 ★", c: "text-accent" },
                   ].map((s) => (
-                    <div key={s.l} className="rounded-lg bg-background/40 border border-border/40 p-3 text-left">
+                    <div key={s.l} className="min-w-0 rounded-lg bg-background/40 border border-border/40 p-3 text-left">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
-                      <div className={`text-lg font-display font-bold mt-1 ${s.c}`}>{s.v}</div>
+                      <div className={`text-lg font-display font-bold mt-1 ${s.c} break-words`}>{s.v}</div>
                     </div>
                   ))}
                 </div>
@@ -267,7 +267,7 @@ function Landing() {
           <h2 className="font-display text-4xl md:text-5xl font-bold">Ready to <span className="text-gradient-brand">start</span>?</h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">Join 2,000+ developers and clients building the future of African tech.</p>
           <Button asChild size="lg" className="mt-8 bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-glow)] h-12 px-8">
-            <Link to="/signup">Create your free account <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link to="/dashboard">Create your free account <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </div>
       </section>

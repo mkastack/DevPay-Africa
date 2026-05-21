@@ -140,6 +140,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    // Return a safe noop fallback to avoid runtime crashes when a route
+    // renders before the AuthProvider is mounted (client-side transitions).
+    return {
+      session: null,
+      user: null,
+      profile: null,
+      loading: true,
+      signIn: async () => {},
+      signUp: async () => ({ needsConfirmation: true, email: "" }),
+      signOut: async () => {},
+      resendConfirmation: async () => {},
+      refreshProfile: async () => {},
+    } as AuthCtx;
+  }
   return ctx;
 }

@@ -5,12 +5,6 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
-  beforeLoad: () => {
-    const { isAuthenticated } = useAuthStore.getState();
-    if (!isAuthenticated) {
-      throw redirect({ to: "/login" });
-    }
-  },
   head: () => ({ meta: [{ title: "Redirecting — DevPay Africa" }] }),
   component: DashboardDispatcher,
 });

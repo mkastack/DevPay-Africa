@@ -15,14 +15,20 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JobsRouteImport } from './routes/jobs'
+import { Route as DeveloperRouteImport } from './routes/developer'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClientRouteImport } from './routes/client'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DeveloperIndexRouteImport } from './routes/developer.index'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
+import { Route as TalentUserIdRouteImport } from './routes/talent.$userId'
 import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
+import { Route as DeveloperProposalsRouteImport } from './routes/developer.proposals'
+import { Route as DeveloperActiveJobsRouteImport } from './routes/developer.active-jobs'
 import { Route as ClientTalentRouteImport } from './routes/client.talent'
 import { Route as ClientPostJobRouteImport } from './routes/client.post-job'
 import { Route as ClientPayoutsRouteImport } from './routes/client.payouts'
+import { Route as ClientActiveContractsRouteImport } from './routes/client.active-contracts'
 import { Route as ClientProjectsJobIdRouteImport } from './routes/client.projects.$jobId'
 import { Route as ClientDisputesNewRouteImport } from './routes/client.disputes.new'
 
@@ -56,6 +62,11 @@ const JobsRoute = JobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeveloperRoute = DeveloperRouteImport.update({
+  id: '/developer',
+  path: '/developer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -71,15 +82,35 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeveloperIndexRoute = DeveloperIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DeveloperRoute,
+} as any)
 const ClientIndexRoute = ClientIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ClientRoute,
 } as any)
+const TalentUserIdRoute = TalentUserIdRouteImport.update({
+  id: '/talent/$userId',
+  path: '/talent/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JobsJobIdRoute = JobsJobIdRouteImport.update({
   id: '/$jobId',
   path: '/$jobId',
   getParentRoute: () => JobsRoute,
+} as any)
+const DeveloperProposalsRoute = DeveloperProposalsRouteImport.update({
+  id: '/proposals',
+  path: '/proposals',
+  getParentRoute: () => DeveloperRoute,
+} as any)
+const DeveloperActiveJobsRoute = DeveloperActiveJobsRouteImport.update({
+  id: '/active-jobs',
+  path: '/active-jobs',
+  getParentRoute: () => DeveloperRoute,
 } as any)
 const ClientTalentRoute = ClientTalentRouteImport.update({
   id: '/talent',
@@ -94,6 +125,11 @@ const ClientPostJobRoute = ClientPostJobRouteImport.update({
 const ClientPayoutsRoute = ClientPayoutsRouteImport.update({
   id: '/payouts',
   path: '/payouts',
+  getParentRoute: () => ClientRoute,
+} as any)
+const ClientActiveContractsRoute = ClientActiveContractsRouteImport.update({
+  id: '/active-contracts',
+  path: '/active-contracts',
   getParentRoute: () => ClientRoute,
 } as any)
 const ClientProjectsJobIdRoute = ClientProjectsJobIdRouteImport.update({
@@ -111,17 +147,23 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/developer': typeof DeveloperRouteWithChildren
   '/jobs': typeof JobsRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/client/active-contracts': typeof ClientActiveContractsRoute
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
   '/client/talent': typeof ClientTalentRoute
+  '/developer/active-jobs': typeof DeveloperActiveJobsRoute
+  '/developer/proposals': typeof DeveloperProposalsRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
+  '/talent/$userId': typeof TalentUserIdRoute
   '/client/': typeof ClientIndexRoute
+  '/developer/': typeof DeveloperIndexRoute
   '/client/disputes/new': typeof ClientDisputesNewRoute
   '/client/projects/$jobId': typeof ClientProjectsJobIdRoute
 }
@@ -134,11 +176,16 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/client/active-contracts': typeof ClientActiveContractsRoute
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
   '/client/talent': typeof ClientTalentRoute
+  '/developer/active-jobs': typeof DeveloperActiveJobsRoute
+  '/developer/proposals': typeof DeveloperProposalsRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
+  '/talent/$userId': typeof TalentUserIdRoute
   '/client': typeof ClientIndexRoute
+  '/developer': typeof DeveloperIndexRoute
   '/client/disputes/new': typeof ClientDisputesNewRoute
   '/client/projects/$jobId': typeof ClientProjectsJobIdRoute
 }
@@ -147,17 +194,23 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/developer': typeof DeveloperRouteWithChildren
   '/jobs': typeof JobsRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/wallet': typeof WalletRoute
+  '/client/active-contracts': typeof ClientActiveContractsRoute
   '/client/payouts': typeof ClientPayoutsRoute
   '/client/post-job': typeof ClientPostJobRoute
   '/client/talent': typeof ClientTalentRoute
+  '/developer/active-jobs': typeof DeveloperActiveJobsRoute
+  '/developer/proposals': typeof DeveloperProposalsRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
+  '/talent/$userId': typeof TalentUserIdRoute
   '/client/': typeof ClientIndexRoute
+  '/developer/': typeof DeveloperIndexRoute
   '/client/disputes/new': typeof ClientDisputesNewRoute
   '/client/projects/$jobId': typeof ClientProjectsJobIdRoute
 }
@@ -167,17 +220,23 @@ export interface FileRouteTypes {
     | '/'
     | '/client'
     | '/dashboard'
+    | '/developer'
     | '/jobs'
     | '/login'
     | '/notifications'
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/client/active-contracts'
     | '/client/payouts'
     | '/client/post-job'
     | '/client/talent'
+    | '/developer/active-jobs'
+    | '/developer/proposals'
     | '/jobs/$jobId'
+    | '/talent/$userId'
     | '/client/'
+    | '/developer/'
     | '/client/disputes/new'
     | '/client/projects/$jobId'
   fileRoutesByTo: FileRoutesByTo
@@ -190,11 +249,16 @@ export interface FileRouteTypes {
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/client/active-contracts'
     | '/client/payouts'
     | '/client/post-job'
     | '/client/talent'
+    | '/developer/active-jobs'
+    | '/developer/proposals'
     | '/jobs/$jobId'
+    | '/talent/$userId'
     | '/client'
+    | '/developer'
     | '/client/disputes/new'
     | '/client/projects/$jobId'
   id:
@@ -202,17 +266,23 @@ export interface FileRouteTypes {
     | '/'
     | '/client'
     | '/dashboard'
+    | '/developer'
     | '/jobs'
     | '/login'
     | '/notifications'
     | '/profile'
     | '/signup'
     | '/wallet'
+    | '/client/active-contracts'
     | '/client/payouts'
     | '/client/post-job'
     | '/client/talent'
+    | '/developer/active-jobs'
+    | '/developer/proposals'
     | '/jobs/$jobId'
+    | '/talent/$userId'
     | '/client/'
+    | '/developer/'
     | '/client/disputes/new'
     | '/client/projects/$jobId'
   fileRoutesById: FileRoutesById
@@ -221,12 +291,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientRoute: typeof ClientRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  DeveloperRoute: typeof DeveloperRouteWithChildren
   JobsRoute: typeof JobsRouteWithChildren
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   SignupRoute: typeof SignupRoute
   WalletRoute: typeof WalletRoute
+  TalentUserIdRoute: typeof TalentUserIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -273,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developer': {
+      id: '/developer'
+      path: '/developer'
+      fullPath: '/developer'
+      preLoaderRoute: typeof DeveloperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -294,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/developer/': {
+      id: '/developer/'
+      path: '/'
+      fullPath: '/developer/'
+      preLoaderRoute: typeof DeveloperIndexRouteImport
+      parentRoute: typeof DeveloperRoute
+    }
     '/client/': {
       id: '/client/'
       path: '/'
@@ -301,12 +387,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientIndexRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/talent/$userId': {
+      id: '/talent/$userId'
+      path: '/talent/$userId'
+      fullPath: '/talent/$userId'
+      preLoaderRoute: typeof TalentUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/jobs/$jobId': {
       id: '/jobs/$jobId'
       path: '/$jobId'
       fullPath: '/jobs/$jobId'
       preLoaderRoute: typeof JobsJobIdRouteImport
       parentRoute: typeof JobsRoute
+    }
+    '/developer/proposals': {
+      id: '/developer/proposals'
+      path: '/proposals'
+      fullPath: '/developer/proposals'
+      preLoaderRoute: typeof DeveloperProposalsRouteImport
+      parentRoute: typeof DeveloperRoute
+    }
+    '/developer/active-jobs': {
+      id: '/developer/active-jobs'
+      path: '/active-jobs'
+      fullPath: '/developer/active-jobs'
+      preLoaderRoute: typeof DeveloperActiveJobsRouteImport
+      parentRoute: typeof DeveloperRoute
     }
     '/client/talent': {
       id: '/client/talent'
@@ -329,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientPayoutsRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/client/active-contracts': {
+      id: '/client/active-contracts'
+      path: '/active-contracts'
+      fullPath: '/client/active-contracts'
+      preLoaderRoute: typeof ClientActiveContractsRouteImport
+      parentRoute: typeof ClientRoute
+    }
     '/client/projects/$jobId': {
       id: '/client/projects/$jobId'
       path: '/projects/$jobId'
@@ -347,6 +461,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface ClientRouteChildren {
+  ClientActiveContractsRoute: typeof ClientActiveContractsRoute
   ClientPayoutsRoute: typeof ClientPayoutsRoute
   ClientPostJobRoute: typeof ClientPostJobRoute
   ClientTalentRoute: typeof ClientTalentRoute
@@ -356,6 +471,7 @@ interface ClientRouteChildren {
 }
 
 const ClientRouteChildren: ClientRouteChildren = {
+  ClientActiveContractsRoute: ClientActiveContractsRoute,
   ClientPayoutsRoute: ClientPayoutsRoute,
   ClientPostJobRoute: ClientPostJobRoute,
   ClientTalentRoute: ClientTalentRoute,
@@ -366,6 +482,22 @@ const ClientRouteChildren: ClientRouteChildren = {
 
 const ClientRouteWithChildren =
   ClientRoute._addFileChildren(ClientRouteChildren)
+
+interface DeveloperRouteChildren {
+  DeveloperActiveJobsRoute: typeof DeveloperActiveJobsRoute
+  DeveloperProposalsRoute: typeof DeveloperProposalsRoute
+  DeveloperIndexRoute: typeof DeveloperIndexRoute
+}
+
+const DeveloperRouteChildren: DeveloperRouteChildren = {
+  DeveloperActiveJobsRoute: DeveloperActiveJobsRoute,
+  DeveloperProposalsRoute: DeveloperProposalsRoute,
+  DeveloperIndexRoute: DeveloperIndexRoute,
+}
+
+const DeveloperRouteWithChildren = DeveloperRoute._addFileChildren(
+  DeveloperRouteChildren,
+)
 
 interface JobsRouteChildren {
   JobsJobIdRoute: typeof JobsJobIdRoute
@@ -381,12 +513,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientRoute: ClientRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  DeveloperRoute: DeveloperRouteWithChildren,
   JobsRoute: JobsRouteWithChildren,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   SignupRoute: SignupRoute,
   WalletRoute: WalletRoute,
+  TalentUserIdRoute: TalentUserIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

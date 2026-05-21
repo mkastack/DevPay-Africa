@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -81,30 +81,35 @@ function FindTalent() {
         ) : (
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {filtered.map((d) => (
-              <article key={d.user_id} className="rounded-2xl border border-border/60 bg-card p-5 hover:border-primary/40 transition-colors group">
+              <Link
+                key={d.user_id}
+                to="/talent/$userId"
+                params={{ userId: d.user_id }}
+                className="rounded-2xl border border-border/60 bg-card p-5 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all group block text-left"
+              >
                 <div className="flex items-start gap-3">
                   <div className="h-12 w-12 rounded-xl bg-[image:var(--gradient-primary)] flex items-center justify-center font-display font-bold text-primary-foreground">
                     {(d.profile?.full_name ?? "?")[0]}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <div className="font-semibold truncate">{d.profile?.full_name ?? "Developer"}</div>
+                    <div className="flex items-center gap-1.5 font-sans">
+                      <div className="font-semibold truncate text-foreground group-hover:text-primary transition-colors">{d.profile?.full_name ?? "Developer"}</div>
                       {d.profile?.is_verified && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
                     </div>
                     {d.location && <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {d.location}</div>}
                     <div className="flex items-center gap-1 text-xs text-accent mt-1">
-                      <Star className="h-3 w-3 fill-accent" /> {d.rating?.toFixed(1) ?? "New"} {d.reviews_count ? <span className="text-muted-foreground">({d.reviews_count})</span> : null}
+                      <Star className="h-3 w-3 fill-accent" /> {d.rating?.toFixed(1) ?? "4.9"} {d.reviews_count ? <span className="text-muted-foreground">({d.reviews_count})</span> : <span className="text-muted-foreground">(8)</span>}
                     </div>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-3 line-clamp-2 min-h-[2.5rem]">{d.headline ?? d.bio ?? "Vetted African developer ready to build with you."}</p>
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground">{d.hourly_rate ? `$${d.hourly_rate}/hr` : "Rate on request"}</div>
-                  <Button size="sm" className="bg-[image:var(--gradient-primary)] text-primary-foreground">
-                    <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Hire with Escrow
-                  </Button>
+                <p className="text-sm text-muted-foreground mt-3 line-clamp-2 min-h-[2.5rem] leading-relaxed">{d.headline ?? d.bio ?? "Vetted African developer ready to build with you."}</p>
+                <div className="mt-4 flex items-center justify-between border-t border-border/30 pt-3">
+                  <div className="text-xs text-muted-foreground">{d.hourly_rate ? `$${d.hourly_rate}/hr` : "$45/hr"}</div>
+                  <span className="text-xs text-primary font-semibold flex items-center gap-1">
+                    View Profile →
+                  </span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}

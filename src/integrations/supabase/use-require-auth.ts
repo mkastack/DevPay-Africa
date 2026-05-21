@@ -15,7 +15,7 @@ export function useRequireAuth(requiredRole?: UserRole) {
       return;
     }
     if (requiredRole && profile && profile.role !== requiredRole) {
-      navigate({ to: "/client" });
+      navigate({ to: profile.role === "developer" ? "/developer" : "/client" });
     }
   }, [session, profile, loading, requiredRole, navigate]);
 

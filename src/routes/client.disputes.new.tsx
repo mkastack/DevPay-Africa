@@ -21,6 +21,9 @@ const reasons = [
   { id: "other", label: "Other", desc: "The issue doesn't fit into the categories above." },
 ];
 
+import { captureException } from "@/integrations/sentry";
+import { sendDisputeNotificationEmail } from "@/integrations/resend";
+
 function NewDispute() {
   const { jobId } = Route.useSearch();
   const { session } = useAuth();
@@ -34,22 +37,67 @@ function NewDispute() {
 
   useEffect(() => {
     if (!jobId) return;
-    supabase.from("milestones").select("amount,status").eq("job_id", jobId).then(({ data }) => {
-      const total = (data ?? []).reduce((s: number, m: { amount: number }) => s + Number(m.amount), 0);
-      setEscrow({ total, status: "active" });
-    });
+    try {
+      supabase.from("milestones").select("amount,status").eq("job_id", jobId).then(({ data }) => {
+        const total = (data ?? []).reduce((s: number, m: { amount: number }) => s + Number(m.amount), 0);
+        setEscrow({ total, status: "active" });
+      });
+    } catch (err) {
+      captureException(err, { tags: { source: "fetch-disputes-milestones", jobId } });
+    }
   }, [jobId]);
 
   const submit = async () => {
     if (!session?.user || !jobId) { toast.error("Missing job"); return; }
     setBusy(true);
-    const { error } = await supabase.from("disputes").insert({
-      job_id: jobId, opened_by: session.user.id, reason, description, proposed_resolution: resolution, status: "open",
-    });
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Dispute filed. Mediation team notified.");
-    navigate({ to: "/client/projects/$jobId", params: { jobId } });
+    try {
+      // Fetch Job Details
+      const { data: job } = await supabase
+        .from("jobs")
+        .select("title")
+        .eq("id", jobId)
+        .maybeSingle();
+
+      const { error } = await supabase.from("disputes").insert({
+        job_id: jobId, opened_by: session.user.id, reason, description, proposed_resolution: resolution, status: "open",
+      });
+      if (error) throw error;
+
+      // Find developer to notify
+      const { data: proposal } = await supabase
+        .from("proposals")
+        .select("developer_id")
+        .eq("job_id", jobId)
+        .eq("status", "accepted")
+        .maybeSingle();
+
+      if (proposal?.developer_id) {
+        // Query developer email profile
+        const { data: devProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", proposal.developer_id)
+          .maybeSingle();
+
+        if (devProfile?.email) {
+          // Trigger dispute alert email via Resend
+          sendDisputeNotificationEmail(
+            devProfile.email,
+            devProfile.full_name || "Developer",
+            job?.title || "Project Milestone",
+            reasons.find(r => r.id === reason)?.label || reason
+          );
+        }
+      }
+
+      toast.success("Dispute filed. Mediation team notified.");
+      navigate({ to: "/client/projects/$jobId", params: { jobId } });
+    } catch (err) {
+      captureException(err, { userId: session.user.id, tags: { action: "submit-dispute", jobId } });
+      toast.error(err instanceof Error ? err.message : "Failed to submit dispute");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

@@ -10,6 +10,9 @@ import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import type { UserRole } from "@/integrations/supabase/client";
 
+import { captureException } from "@/integrations/sentry";
+import { sendWelcomeEmail } from "@/integrations/resend";
+
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Sign Up — DevPay Africa" }] }),
   component: SignUp,
@@ -35,10 +38,13 @@ function SignUp() {
       if (needsConfirmation) {
         setConfirmSent(email);
       } else {
+        // Send welcoming transaction email via Resend
+        sendWelcomeEmail(form.email, form.fullName);
         toast.success("Account created — welcome!");
-        navigate({ to: "/client" });
+        navigate({ to: "/dashboard" });
       }
     } catch (err) {
+      captureException(err, { tags: { action: "user-signup", role } });
       const msg = err instanceof Error ? err.message : "Sign up failed";
       setError(msg.includes("already registered") ? "This email is already registered. Try logging in instead." : msg);
     } finally {
@@ -53,6 +59,7 @@ function SignUp() {
       await resendConfirmation(confirmSent);
       toast.success("Confirmation email sent again");
     } catch (err) {
+      captureException(err, { tags: { action: "resend-confirm", email: confirmSent } });
       toast.error(err instanceof Error ? err.message : "Could not resend");
     } finally {
       setResending(false);
@@ -62,7 +69,7 @@ function SignUp() {
   const handleOAuth = async (provider: "google" | "github") => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/client` },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) toast.error(error.message);
   };

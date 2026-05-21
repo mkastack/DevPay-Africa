@@ -1,14 +1,13 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Loader2, LayoutDashboard, Users, Briefcase, CreditCard, Banknote, Settings } from "lucide-react";
+import { Loader2, LayoutDashboard, Briefcase, CreditCard, ShieldCheck, Settings } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
 
 export const clientNav = [
   { to: "/client", label: "Overview", icon: LayoutDashboard },
-  { to: "/client/talent", label: "Find Talent", icon: Users },
   { to: "/client/post-job", label: "Post a Job", icon: Briefcase },
+  { to: "/client/active-contracts", label: "Active Contracts", icon: ShieldCheck },
   { to: "/wallet", label: "Payments", icon: CreditCard },
-  { to: "/client/payouts", label: "Payouts", icon: Banknote },
   { to: "/profile", label: "Settings", icon: Settings },
 ];
 
@@ -18,7 +17,7 @@ export const Route = createFileRoute("/client")({
 });
 
 function ClientLayout() {
-  const { ready } = useRequireAuth();
+  const { ready } = useRequireAuth("client");
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">

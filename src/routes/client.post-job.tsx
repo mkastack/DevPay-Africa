@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { toast } from "sonner";
 
+import { captureException } from "@/integrations/sentry";
+import { sendPaymentConfirmationEmail } from "@/integrations/resend";
+
 export const Route = createFileRoute("/client/post-job")({
   head: () => ({ meta: [{ title: "Post a Job — DevPay Africa" }] }),
   component: PostJob,
@@ -29,7 +32,7 @@ const suggestedSkills: Record<string, string[]> = {
 type Milestone = { title: string; amount: string; due: string };
 
 function PostJob() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -72,43 +75,111 @@ function PostJob() {
   const submit = async () => {
     if (!session?.user) return;
     setBusy(true);
-    const budgetTotal = Number(data.budget) || totalMilestones;
-    const { data: job, error } = await supabase.from("jobs").insert({
-      client_id: session.user.id,
-      title: data.title,
-      description: data.description,
-      budget_min: budgetTotal,
-      budget_max: budgetTotal,
-      duration: data.duration || null,
-      experience_level: data.level,
-      status: "open",
-    }).select().single();
-    if (error || !job) { setBusy(false); toast.error(error?.message ?? "Failed to post job"); return; }
+    try {
+      const budgetTotal = Number(data.budget) || totalMilestones;
+      const { data: job, error } = await supabase.from("jobs").insert({
+        client_id: session.user.id,
+        title: data.title,
+        description: data.description,
+        budget_min: budgetTotal,
+        budget_max: budgetTotal,
+        duration: data.duration || null,
+        experience_level: data.level,
+        status: "open",
+      }).select().single();
+      if (error || !job) { 
+        captureException(error || new Error("Failed to insert job row"), { userId: session.user.id });
+        setBusy(false); 
+        toast.error(error?.message ?? "Failed to post job"); 
+        return; 
+      }
 
-    const jobId = (job as { id: string }).id;
+      const jobId = (job as { id: string }).id;
 
-    // milestones
-    const ms = data.milestones.filter((m) => m.title && m.amount).map((m, i) => ({
-      job_id: jobId,
-      title: m.title,
-      amount: Number(m.amount),
-      due_date: m.due || null,
-      position: i,
-      status: "pending",
-    }));
-    if (ms.length) await supabase.from("milestones").insert(ms);
+      // milestones
+      const ms = data.milestones.filter((m) => m.title && m.amount).map((m, i) => ({
+        job_id: jobId,
+        title: m.title,
+        amount: Number(m.amount),
+        due_date: m.due || null,
+        position: i,
+        status: "pending",
+      }));
+      if (ms.length) {
+        const { error: msErr } = await supabase.from("milestones").insert(ms);
+        if (msErr) {
+          captureException(msErr, { userId: session.user.id, tags: { action: "milestones-insert", jobId } });
+        }
+      }
 
-    // skills (best-effort: insert names into job_skills via skills table lookup)
-    if (data.skills.length) {
-      const { data: existing } = await supabase.from("skills").select("id,name").in("name", data.skills);
-      const map = new Map((existing ?? []).map((s: { id: string; name: string }) => [s.name, s.id]));
-      const rows = data.skills.filter((s) => map.has(s)).map((s) => ({ job_id: jobId, skill_id: map.get(s) }));
-      if (rows.length) await supabase.from("job_skills").insert(rows);
+      // skills
+      if (data.skills.length) {
+        const { data: existing } = await supabase.from("skills").select("id,name").in("name", data.skills);
+        const map = new Map((existing ?? []).map((s: { id: string; name: string }) => [s.name, s.id]));
+        const rows = data.skills.filter((s) => map.has(s)).map((s) => ({ job_id: jobId, skill_id: map.get(s) }));
+        if (rows.length) {
+          const { error: skillErr } = await supabase.from("job_skills").insert(rows);
+          if (skillErr) {
+            captureException(skillErr, { userId: session.user.id, tags: { action: "skills-insert", jobId } });
+          }
+        }
+      }
+
+      // Dispatch Payment confirmation email via Resend in the background
+      if (session.user.email) {
+        sendPaymentConfirmationEmail(
+          session.user.email,
+          profile?.full_name || "Client",
+          budgetTotal,
+          jobId
+        );
+      }
+
+      // Quietly dispatch background matching task (Inngest simulated background executor)
+      (async () => {
+        try {
+          const { data: devProfiles } = await supabase
+            .from("developer_profiles")
+            .select("user_id, skills, title");
+          
+          if (devProfiles) {
+            const jobSkillsLower = data.skills.map(s => s.toLowerCase());
+            const jobTitleLower = data.title.toLowerCase();
+            
+            const matching = devProfiles.filter(dev => {
+              const devSkills = (dev.skills ?? []).map(s => s.toLowerCase());
+              const skillMatch = devSkills.some(s => jobSkillsLower.includes(s));
+              const devTitle = (dev.title ?? "").toLowerCase();
+              const titleKeywords = jobTitleLower.split(" ");
+              const titleMatch = titleKeywords.some(word => word.length > 3 && devTitle.includes(word));
+              return skillMatch || titleMatch;
+            });
+
+            // Create notifications in parallel background processes
+            matching.forEach(async (dev) => {
+              await supabase.from("notifications").insert({
+                user_id: dev.user_id,
+                type: "job_match",
+                title: "New Job Match Alert! 🚀",
+                message: `A new job matching your skill set was posted: "${data.title}". View details and submit a proposal!`,
+                link: `/jobs/${jobId}`
+              });
+              console.log(`[Background Task] Dispatched developer notification: ${dev.user_id}`);
+            });
+          }
+        } catch (err) {
+          captureException(err, { tags: { subtask: "background-matching", jobId } });
+        }
+      })();
+
+      setBusy(false);
+      toast.success("Job posted & escrow ready");
+      navigate({ to: "/client/projects/$jobId", params: { jobId } });
+    } catch (e: any) {
+      captureException(e, { userId: session.user.id });
+      setBusy(false);
+      toast.error(e.message || "An unexpected error occurred.");
     }
-
-    setBusy(false);
-    toast.success("Job posted & escrow ready");
-    navigate({ to: "/client/projects/$jobId", params: { jobId } });
   };
 
   const stepLabels = ["Project Essentials", "Skills & Expertise", "Budget & Milestones", "Final Review"];

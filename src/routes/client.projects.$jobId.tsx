@@ -8,6 +8,9 @@ import { useAuth } from "@/integrations/supabase/auth-context";
 import { toast } from "sonner";
 import { EscrowTimeline } from "@/components/EscrowTimeline";
 
+import { captureException } from "@/integrations/sentry";
+import { sendPaymentConfirmationEmail } from "@/integrations/resend";
+
 export const Route = createFileRoute("/client/projects/$jobId")({
   head: () => ({ meta: [{ title: "Project — DevPay Africa" }] }),
   component: ProjectDetail,
@@ -39,15 +42,20 @@ function ProjectDetail() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: j }, { data: ms }, { data: mg }] = await Promise.all([
-        supabase.from("jobs").select("*").eq("id", jobId).maybeSingle(),
-        supabase.from("milestones").select("*").eq("job_id", jobId).order("position"),
-        supabase.from("project_messages").select("*").eq("job_id", jobId).order("created_at"),
-      ]);
-      setJob((j as Job) ?? null);
-      setMilestones((ms as Milestone[]) ?? []);
-      setMessages((mg as Msg[]) ?? []);
-      setLoading(false);
+      try {
+        const [{ data: j }, { data: ms }, { data: mg }] = await Promise.all([
+          supabase.from("jobs").select("*").eq("id", jobId).maybeSingle(),
+          supabase.from("milestones").select("*").eq("job_id", jobId).order("position"),
+          supabase.from("project_messages").select("*").eq("job_id", jobId).order("created_at"),
+        ]);
+        setJob((j as Job) ?? null);
+        setMilestones((ms as Milestone[]) ?? []);
+        setMessages((mg as Msg[]) ?? []);
+        setLoading(false);
+      } catch (err) {
+        captureException(err, { tags: { page: "project-detail", jobId } });
+        setLoading(false);
+      }
     })();
 
     const ch = supabase
@@ -66,16 +74,64 @@ function ProjectDetail() {
     if (!draft.trim() || !session?.user) return;
     const body = draft.trim();
     setDraft("");
-    const { error } = await supabase.from("project_messages").insert({ job_id: jobId, sender_id: session.user.id, body });
-    if (error) toast.error(error.message);
+    try {
+      const { error } = await supabase.from("project_messages").insert({ job_id: jobId, sender_id: session.user.id, body });
+      if (error) throw error;
+    } catch (error) {
+      captureException(error, { userId: session.user.id, tags: { action: "send-chat-msg", jobId } });
+      toast.error("Failed to send message");
+    }
   };
 
   const approveMilestone = async (m: Milestone) => {
     setBusy(m.id);
-    const { error } = await supabase.from("milestones").update({ status: "released", approved_at: new Date().toISOString() }).eq("id", m.id);
-    setBusy(null);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Funds released to developer");
+    try {
+      const { error } = await supabase.from("milestones").update({ status: "released", approved_at: new Date().toISOString() }).eq("id", m.id);
+      if (error) throw error;
+
+      // Log transaction
+      await supabase.from("transactions").insert({
+        user_id: session?.user?.id,
+        amount: Number(m.amount),
+        type: "release",
+        description: `Released Milestone: "${m.title}" for job ${job?.title}`,
+        status: "completed"
+      });
+
+      // Fetch the developer ID from accepted proposal for this job to notify them
+      const { data: proposal } = await supabase
+        .from("proposals")
+        .select("developer_id")
+        .eq("job_id", jobId)
+        .eq("status", "accepted")
+        .maybeSingle();
+
+      if (proposal?.developer_id) {
+        // Query developer email profile
+        const { data: devProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", proposal.developer_id)
+          .maybeSingle();
+
+        if (devProfile?.email) {
+          // Trigger milestone payout confirmation email via Resend
+          sendPaymentConfirmationEmail(
+            devProfile.email,
+            devProfile.full_name || "Developer",
+            Number(m.amount),
+            m.id
+          );
+        }
+      }
+
+      toast.success("Funds released to developer");
+    } catch (error) {
+      captureException(error, { userId: session?.user?.id, tags: { action: "approve-milestone", milestoneId: m.id } });
+      toast.error("Failed to release funds");
+    } finally {
+      setBusy(null);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;

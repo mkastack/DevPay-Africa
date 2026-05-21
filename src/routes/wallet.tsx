@@ -11,13 +11,8 @@ import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const nav = [
-  { to: "/client", label: "Overview", icon: LayoutDashboard },
-  { to: "/jobs", label: "Jobs", icon: Briefcase },
-  { to: "/wallet", label: "Wallet", icon: WalletIcon },
-  { to: "/profile", label: "Profile", icon: User },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
+import { clientNav } from "./client";
+import { developerNav } from "./developer";
 
 export const Route = createFileRoute("/wallet")({
   head: () => ({ meta: [{ title: "Wallet — DevPay Africa" }] }),
@@ -57,7 +52,8 @@ type Bucket = "escrow" | "pending" | "released";
 
 function WalletPage() {
   const { ready } = useRequireAuth();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
+  const nav = profile?.role === "developer" ? developerNav : clientNav;
   const [tx, setTx] = useState<Tx[]>([]);
   const [wd, setWd] = useState<Wd[]>([]);
   const [ms, setMs] = useState<MS[]>([]);
@@ -69,6 +65,8 @@ function WalletPage() {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<"momo" | "bank">("momo");
   const [destination, setDestination] = useState("");
+  const [momoNetwork, setMomoNetwork] = useState("MTN MoMo");
+  const [bankName, setBankName] = useState("GCB Bank");
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = async () => {
@@ -117,17 +115,18 @@ function WalletPage() {
     if (!amt || amt <= 0) { toast.error("Enter an amount"); return; }
     if (amt > balance) { toast.error("Amount exceeds available balance"); return; }
     setSubmitting(true);
+    const providerStr = method === "momo" ? momoNetwork : bankName;
     const { error } = await supabase.from("withdrawals").insert({
       user_id: session.user.id,
       amount: amt,
-      method,
-      destination: destination || null,
+      method: method === "momo" ? "Mobile Money" : "Bank Transfer",
+      destination: `${providerStr} · ${destination}`,
       status: "pending",
       currency: "USD",
     });
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Withdrawal requested");
+    toast.success("Withdrawal requested successfully! 💰");
     setOpen(false);
     setAmount(""); setDestination("");
     refresh();
@@ -140,9 +139,17 @@ function WalletPage() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 relative overflow-hidden">
           <div className="absolute inset-0 -z-10 opacity-40" style={{ background: "var(--gradient-hero)" }} />
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Available Balance</div>
-          <div className="mt-3 flex items-baseline gap-3">
-            <div className="font-display text-5xl font-bold text-gradient-brand">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            Available Balance (Dual Currency)
+          </div>
+          <div className="mt-3 space-y-1">
+            <div className="font-display text-5xl font-black text-gradient-brand">
+              ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-semibold text-muted-foreground font-sans">USD</span>
+            </div>
+            <div className="text-base font-display font-semibold text-foreground/80 flex items-center gap-1">
+              <span>₵{(balance * 14.5).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-[10px] text-muted-foreground font-sans uppercase">GH₵ (1 USD = 14.50 GHS)</span>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 mt-6">
             <Dialog open={open} onOpenChange={setOpen}>
@@ -154,7 +161,7 @@ function WalletPage() {
               <DialogContent className="bg-card border-border max-w-md">
                 <DialogHeader>
                   <DialogTitle className="font-display">Withdraw funds</DialogTitle>
-                  <DialogDescription>Request a payout. Available: ${balance.toFixed(2)}</DialogDescription>
+                  <DialogDescription>Request a payout. Available: ${balance.toFixed(2)} (₵{(balance * 14.5).toFixed(2)})</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleWithdraw} className="space-y-4">
                   <div><Label>Amount (USD)</Label><Input required type="number" min="1" step="0.01" max={balance} className="mt-1.5" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
@@ -169,7 +176,61 @@ function WalletPage() {
                       </button>
                     </div>
                   </div>
-                  <div><Label>{method === "momo" ? "Phone number" : "Account / IBAN"}</Label><Input required className="mt-1.5" placeholder={method === "momo" ? "+233 24 000 0000" : "GB29 NWBK..."} value={destination} onChange={(e) => setDestination(e.target.value)} /></div>
+
+                  {method === "momo" ? (
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Select Mobile Money Network</Label>
+                        <select
+                          value={momoNetwork}
+                          onChange={(e) => setMomoNetwork(e.target.value)}
+                          className="w-full mt-1.5 rounded-lg border border-border/60 bg-surface px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+                        >
+                          <option value="MTN MoMo">MTN Mobile Money 🇬🇭</option>
+                          <option value="Telecel Cash">Telecel Cash 🇬🇭</option>
+                          <option value="AirtelTigo Money">AirtelTigo Money 🇬🇭</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label>Mobile Money Phone Number</Label>
+                        <Input
+                          required
+                          className="mt-1.5 text-foreground"
+                          placeholder="+233 24 000 0000"
+                          value={destination}
+                          onChange={(e) => setDestination(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Select Bank Name</Label>
+                        <select
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          className="w-full mt-1.5 rounded-lg border border-border/60 bg-surface px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+                        >
+                          <option value="GCB Bank">GCB Bank (Ghana Commercial Bank)</option>
+                          <option value="Ecobank Ghana">Ecobank Ghana</option>
+                          <option value="Stanbic Bank">Stanbic Bank Ghana</option>
+                          <option value="Absa Bank Ghana">Absa Bank Ghana</option>
+                          <option value="Fidelity Bank">Fidelity Bank Ghana</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label>Account Number / IBAN</Label>
+                        <Input
+                          required
+                          className="mt-1.5 text-foreground"
+                          placeholder="GH12GCBB001002003004"
+                          value={destination}
+                          onChange={(e) => setDestination(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <DialogFooter>
                     <Button type="submit" disabled={submitting} className="bg-[image:var(--gradient-primary)] text-primary-foreground">
                       {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Submitting…</> : "Request payout"}

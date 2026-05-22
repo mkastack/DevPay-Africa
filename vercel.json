@@ -1,8 +1,18 @@
 {
-  "$schema": "https://vercel.com/schemas/vercel.json",
+  "version": 3,
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/server",
-  "framework": "tanstack-start",
+  "functions": {
+    "dist/server/index.js": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    {
+      "src": "^/(.*)$",
+      "dest": "dist/server/index.js"
+    }
+  ],
   "env": {
     "VITE_SUPABASE_URL": "@vite_supabase_url",
     "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key",
@@ -18,12 +28,6 @@
     "SENTRY_PROJECT": "@sentry_project",
     "SENTRY_AUTH_TOKEN": "@sentry_auth_token"
   },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.js"
-    }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",

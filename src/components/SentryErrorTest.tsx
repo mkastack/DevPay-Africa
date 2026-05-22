@@ -4,10 +4,15 @@
  */
 
 import { Button } from "@/components/ui/button";
+import * as Sentry from "@sentry/react";
 
 export function SentryErrorTest() {
   const handleThrowError = () => {
-    throw new Error("This is a test error from Sentry error tracking!");
+    try {
+      throw new Error("This is a test error from Sentry error tracking!");
+    } catch (error) {
+      Sentry.captureException(error);
+    }
   };
 
   return (

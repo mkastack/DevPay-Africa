@@ -69,12 +69,18 @@ export async function initiatePayment(options: PaymentOptions): Promise<void> {
 
   const { PaystackPop } = window as any;
 
+  // Ensure amount is a valid integer in cents
+  const amountInCents = Math.round(options.amount * 100);
+  if (!Number.isInteger(amountInCents) || amountInCents <= 0) {
+    throw new Error("Invalid amount: must be a positive integer when converted to cents");
+  }
+
   return new Promise((resolve, reject) => {
     try {
       PaystackPop.setup({
         key: PAYSTACK_PUBLIC_KEY,
         email: options.email,
-        amount: options.amount * 100, // Convert to cents
+        amount: amountInCents,
         ref: options.reference,
         currency: "USD",
         firstname: options.firstName || "",
@@ -201,10 +207,10 @@ export function calculateTotalWithFee(baseAmount: number): {
   serviceFee: number;
   total: number;
 } {
-  const serviceFee = baseAmount * 0.07;
-  const total = baseAmount + serviceFee;
+  const serviceFee = Math.round(baseAmount * 0.07 * 100) / 100; // 7% fee, rounded to 2 decimals
+  const total = Math.round((baseAmount + serviceFee) * 100) / 100; // Total rounded to 2 decimals
   return {
-    baseAmount,
+    baseAmount: Math.round(baseAmount * 100) / 100,
     serviceFee,
     total,
   };

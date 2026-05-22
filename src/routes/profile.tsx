@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Save, Plus, X } from "lucide-react";
+import { Loader2, Save, Plus, X, Upload } from "lucide-react";
+import { fileToDataUri } from "@/lib/file-to-data-uri";
+import {
+  isCloudinaryConfigured,
+  isCloudinaryDeliveryUrl,
+  profilePhotoPublicId,
+} from "@/lib/cloudinary-client";
+import { uploadProfilePhotoFn } from "@/lib/upload-actions";
+import { OptimizedImage } from "@/components/ui/OptimizedImage";
 import { useRequireAuth } from "@/integrations/supabase/use-require-auth";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +50,7 @@ function ProfilePage() {
   const { session, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // shared
   const [fullName, setFullName] = useState("");
@@ -100,6 +109,27 @@ function ProfilePage() {
     setSkillInput("");
   };
   const removeSkill = (s: string) => setDev((d) => ({ ...d, skills: (d.skills ?? []).filter((x) => x !== s) }));
+
+  const onAvatarFile = async (file: File | undefined) => {
+    if (!file || !session?.user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const dataUri = await fileToDataUri(file);
+      const { url } = await uploadProfilePhotoFn({
+        data: { dataUri, userId: session.user.id },
+      });
+      setAvatarUrl(url);
+      toast.success("Photo uploaded — save your profile to keep it.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const save = async () => {
     if (!session?.user || !profile) return;
@@ -162,7 +192,53 @@ function ProfilePage() {
           <h2 className="font-display text-lg font-semibold">Account</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <div><Label>Full name</Label><Input className="mt-1.5" value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
-            <div><Label>Avatar URL</Label><Input className="mt-1.5" placeholder="https://…" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} /></div>
+            <div className="sm:col-span-2">
+              <Label>Profile photo</Label>
+              <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                {avatarUrl && isCloudinaryConfigured() && isCloudinaryDeliveryUrl(avatarUrl) && session?.user ? (
+                  <OptimizedImage
+                    publicId={profilePhotoPublicId(session.user.id)}
+                    width={56}
+                    height={56}
+                    alt={fullName || "Profile photo"}
+                    className="h-14 w-14 rounded-full object-cover border border-border"
+                  />
+                ) : avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    className="h-14 w-14 rounded-full object-cover border border-border"
+                  />
+                ) : null}
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={uploadingAvatar}
+                    onChange={(e) => {
+                      void onAvatarFile(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button type="button" variant="outline" disabled={uploadingAvatar} asChild>
+                    <span>
+                      {uploadingAvatar ? (
+                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />Uploading…</>
+                      ) : (
+                        <><Upload className="h-4 w-4 mr-2" />Upload photo</>
+                      )}
+                    </span>
+                  </Button>
+                </label>
+                <Input
+                  className="flex-1 min-w-[12rem]"
+                  placeholder="Or paste image URL"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
           <div className="text-xs text-muted-foreground">{profile?.email}</div>
         </div>

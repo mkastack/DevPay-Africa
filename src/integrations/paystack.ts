@@ -3,13 +3,10 @@
  * Handles escrow payment processing and verification for job postings
  */
 
-const PAYSTACK_API_BASE = "https://api.paystack.co";
 const PAYSTACK_PUBLIC_KEY =
   typeof import.meta !== "undefined"
     ? import.meta.env?.VITE_PAYSTACK_PUBLIC_KEY
     : "";
-const PAYSTACK_SECRET_KEY =
-  typeof process !== "undefined" ? process.env?.PAYSTACK_SECRET_KEY : "";
 
 if (!PAYSTACK_PUBLIC_KEY) {
   console.warn(
@@ -37,7 +34,13 @@ export function initializePaystack(): Promise<void> {
     const script = document.createElement("script");
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
-    script.onload = () => resolve();
+    script.onload = () => {
+      if ((window as { PaystackPop?: unknown }).PaystackPop) {
+        resolve();
+      } else {
+        reject(new Error("Paystack script loaded but PaystackPop is unavailable"));
+      }
+    };
     script.onerror = () => reject(new Error("Failed to load Paystack script"));
     document.head.appendChild(script);
   });
@@ -48,7 +51,7 @@ export function initializePaystack(): Promise<void> {
  */
 export interface PaymentOptions {
   email: string;
-  amount: number; // Amount in cents (Paystack expects integers in cents)
+  amount: number; // Amount in major currency units (e.g. USD dollars); converted to cents for Paystack
   reference: string; // Unique reference for the transaction
   metadata?: Record<string, any>; // Optional metadata
   firstName?: string;
@@ -77,7 +80,7 @@ export async function initiatePayment(options: PaymentOptions): Promise<void> {
 
   return new Promise((resolve, reject) => {
     try {
-      PaystackPop.setup({
+      const handler = PaystackPop.setup({
         key: PAYSTACK_PUBLIC_KEY,
         email: options.email,
         amount: amountInCents,
@@ -89,15 +92,19 @@ export async function initiatePayment(options: PaymentOptions): Promise<void> {
         onClose() {
           reject(new Error("Payment cancelled by user"));
         },
-        onSuccess(res: any) {
+        onSuccess(res: { reference?: string }) {
           resolve();
           if (options.onSuccess) {
-            options.onSuccess(res.reference);
+            options.onSuccess(res.reference ?? options.reference);
           }
         },
       });
 
-      PaystackPop.openIframe();
+      if (!handler || typeof handler.openIframe !== "function") {
+        throw new Error("Paystack failed to initialize. Please refresh and try again.");
+      }
+
+      handler.openIframe();
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       reject(err);
@@ -106,55 +113,6 @@ export async function initiatePayment(options: PaymentOptions): Promise<void> {
       }
     }
   });
-}
-
-/**
- * Verify a Paystack payment reference on the server
- */
-export async function verifyPaystackPayment(
-  reference: string
-): Promise<{
-  status: string;
-  message: string;
-  data?: {
-    reference: string;
-    amount: number;
-    status: string;
-    customer: {
-      customer_code: string;
-      email: string;
-      first_name?: string;
-      last_name?: string;
-    };
-  };
-}> {
-  if (!PAYSTACK_SECRET_KEY) {
-    throw new Error(
-      "Paystack secret key is not configured. Cannot verify payment."
-    );
-  }
-
-  try {
-    const response = await fetch(
-      `${PAYSTACK_API_BASE}/transaction/verify/${reference}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Paystack API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("[Paystack] Verification failed:", error);
-    throw error;
-  }
 }
 
 /**

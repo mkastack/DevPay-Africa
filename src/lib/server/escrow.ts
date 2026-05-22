@@ -1,5 +1,5 @@
 // src/lib/server/escrow.ts
-import { createServerFn } from "@tanstack/start";
+import { createServerFn } from "@tanstack/react-start";
 import * as Sentry from "@sentry/react";
 import { supabaseServer } from "@/integrations/supabase/server";
 

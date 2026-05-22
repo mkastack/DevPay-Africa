@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignUp() {
-  const { signUp, resendConfirmation } = useAuth();
+  const { signUp, resendConfirmation, session, profile } = useAuth();
   const navigate = useNavigate();
   const [role, setRole] = useState<UserRole | null>(null);
   const [form, setForm] = useState({ fullName: "", email: "", password: "" });
@@ -27,6 +27,12 @@ function SignUp() {
   const [error, setError] = useState<string | null>(null);
   const [confirmSent, setConfirmSent] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (!confirmSent && session && profile) {
+      navigate({ to: "/dashboard" });
+    }
+  }, [confirmSent, session, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -27,9 +27,9 @@ import { captureException } from "@/integrations/sentry";
 import { sendPaymentConfirmationEmail } from "@/integrations/resend";
 import {
   initiateEscrowPayment,
-  verifyPaystackPayment,
   calculateTotalWithFee,
 } from "@/integrations/paystack";
+import { verifyPaystackPaymentFn } from "@/integrations/paystack.server";
 
 export const Route = createFileRoute("/client/post-job")({
   head: () => ({ meta: [{ title: "Post a Job — DevPay Africa" }] }),
@@ -135,7 +135,9 @@ function PostJob() {
         });
 
         // Verify the payment
-        const verification = await verifyPaystackPayment(paymentReference);
+        const verification = await verifyPaystackPaymentFn({
+          data: { reference: paymentReference },
+        });
         if (verification.data?.status !== "success") {
           toast.error("Payment verification failed. Please try again.");
           setBusy(false);

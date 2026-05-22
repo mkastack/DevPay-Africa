@@ -10,6 +10,7 @@ import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import type { UserRole } from "@/integrations/supabase/client";
 
+import { formatAuthError } from "@/integrations/supabase/auth-errors";
 import { captureException } from "@/integrations/sentry";
 import { sendWelcomeEmail } from "@/integrations/resend";
 
@@ -51,8 +52,12 @@ function SignUp() {
       }
     } catch (err) {
       captureException(err, { tags: { action: "user-signup", role } });
-      const msg = err instanceof Error ? err.message : "Sign up failed";
-      setError(msg.includes("already registered") ? "This email is already registered. Try logging in instead." : msg);
+      const msg = formatAuthError(err);
+      setError(
+        msg.includes("already registered")
+          ? "This email is already registered. Try logging in instead."
+          : msg
+      );
     } finally {
       setBusy(false);
     }

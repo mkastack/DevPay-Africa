@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Github, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { formatAuthError } from "@/integrations/supabase/auth-errors";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { SentryErrorTest } from "@/components/SentryErrorTest";
@@ -37,7 +38,7 @@ function Login() {
       toast.success("Welcome back!");
       navigate({ to: "/dashboard" });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Login failed";
+      const msg = formatAuthError(err);
       if (/confirm/i.test(msg) || /not confirmed/i.test(msg)) {
         setNeedsConfirm(true);
         setError("Please confirm your email before logging in.");

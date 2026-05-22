@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, type Profile, type UserRole } from "./client";
+import { formatAuthError } from "./auth-errors";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
 const OAUTH_ROLE_KEY = "devpay_oauth_role";
@@ -26,23 +27,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const ensureUserProfile = async (
+    userId: string,
+    details: { email: string; fullName: string; role: UserRole; username: string }
+  ) => {
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (existing) return existing as Profile;
+
+    const { data: created, error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: userId,
+        role: details.role,
+        full_name: details.fullName,
+        username: details.username,
+        email: details.email,
+      })
+      .select()
+      .maybeSingle();
+
+    if (profileError && !profileError.message.includes("duplicate")) {
+      throw profileError;
+    }
+
+    const profileRow = (created as Profile) ?? null;
+    if (profileRow) {
+      if (details.role === "developer") {
+        await supabase.from("developer_profiles").upsert(
+          { user_id: userId },
+          { onConflict: "user_id", ignoreDuplicates: true }
+        );
+      } else if (details.role === "client") {
+        await supabase.from("client_profiles").upsert(
+          { user_id: userId },
+          { onConflict: "user_id", ignoreDuplicates: true }
+        );
+      }
+    }
+
+    return profileRow;
+  };
+
   const loadProfile = async (userId: string) => {
     let { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-    // First sign-in after email confirmation: profile may not exist yet — create from auth metadata.
     if (!data) {
       const { data: u } = await supabase.auth.getUser();
-      const meta = (u.user?.user_metadata ?? {}) as { full_name?: string; role?: UserRole; username?: string };
-      const localRole = typeof window !== "undefined" ? (localStorage.getItem(OAUTH_ROLE_KEY) as UserRole | null) : null;
+      const meta = (u.user?.user_metadata ?? {}) as {
+        full_name?: string;
+        role?: UserRole;
+        username?: string;
+      };
+      const localRole =
+        typeof window !== "undefined"
+          ? (localStorage.getItem(OAUTH_ROLE_KEY) as UserRole | null)
+          : null;
       const role = (meta.role as UserRole) ?? localRole ?? "developer";
       const fullName = meta.full_name ?? (u.user?.email?.split("@")[0] ?? "New User");
-      const username = meta.username ?? (u.user?.email?.split("@")[0] ?? `user_${userId.slice(0, 6)}`);
-      const { data: created } = await supabase.from("profiles").insert({
-        id: userId, role, full_name: fullName, username, email: u.user?.email ?? "",
-      }).select().maybeSingle();
-      if (created) {
-        if (role === "developer") await supabase.from("developer_profiles").insert({ user_id: userId });
-        else if (role === "client") await supabase.from("client_profiles").insert({ user_id: userId });
-        data = created;
+      const username =
+        meta.username ??
+        (u.user?.email?.split("@")[0] ?? `user_${userId.slice(0, 6)}`);
+      try {
+        data = await ensureUserProfile(userId, {
+          email: u.user?.email ?? "",
+          fullName,
+          role,
+          username,
+        });
+      } catch (err) {
+        console.error("[Auth] Profile setup failed:", formatAuthError(err));
       }
       if (typeof window !== "undefined") {
         localStorage.removeItem(OAUTH_ROLE_KEY);
@@ -96,31 +152,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp: AuthCtx["signUp"] = async ({ email, password, fullName, role }) => {
     const username = email.split("@")[0] + "_" + Math.random().toString(36).slice(2, 6);
+    const redirectTo = `${window.location.origin}/login`;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: redirectTo,
         data: { full_name: fullName, role, username },
       },
     });
     if (error) throw error;
 
     const userId = data.user?.id;
-    // If session is null, email confirmation is required.
     const needsConfirmation = !data.session;
 
-    // Create profile row when we have a session (RLS allows it). Otherwise it'll be created on first sign-in.
     if (userId && data.session) {
-      const { error: pErr } = await supabase.from("profiles").insert({
-        id: userId, role, full_name: fullName, username, email,
-      });
-      if (pErr && !pErr.message.includes("duplicate")) throw pErr;
-      if (role === "developer") {
-        await supabase.from("developer_profiles").insert({ user_id: userId });
-      } else if (role === "client") {
-        await supabase.from("client_profiles").insert({ user_id: userId });
-      }
+      await ensureUserProfile(userId, { email, fullName, role, username });
     }
 
     return { needsConfirmation, email };
@@ -136,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { emailRedirectTo: `${window.location.origin}/login` },
     });
     if (error) throw error;
   };

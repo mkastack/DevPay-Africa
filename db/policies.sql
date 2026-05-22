@@ -172,6 +172,19 @@ do $$ begin
   end if;
 end $$;
 
+-- ---------- wallets (required for signup trigger) ----------
+do $$ begin
+  if to_regclass('public.wallets') is not null then
+    execute 'alter table public.wallets enable row level security';
+    execute 'drop policy if exists "wallets read own" on public.wallets';
+    execute 'drop policy if exists "wallets insert own" on public.wallets';
+    execute 'drop policy if exists "wallets update own" on public.wallets';
+    execute 'create policy "wallets read own" on public.wallets for select using (auth.uid() = user_id)';
+    execute 'create policy "wallets insert own" on public.wallets for insert with check (auth.uid() = user_id)';
+    execute 'create policy "wallets update own" on public.wallets for update using (auth.uid() = user_id)';
+  end if;
+end $$;
+
 -- ---------- withdrawals ----------
 do $$ begin
   if to_regclass('public.withdrawals') is not null then

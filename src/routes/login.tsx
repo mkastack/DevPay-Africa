@@ -8,6 +8,7 @@ import { Github, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { supabase } from "@/integrations/supabase/client";
+import { SentryErrorTest } from "@/components/SentryErrorTest";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — DevPay Africa" }] }),
@@ -34,6 +35,7 @@ function Login() {
     try {
       await signIn(form.email, form.password);
       toast.success("Welcome back!");
+      navigate({ to: "/dashboard" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Login failed";
       if (/confirm/i.test(msg) || /not confirmed/i.test(msg)) {
@@ -109,6 +111,9 @@ function Login() {
           <p className="text-xs text-center text-muted-foreground mt-4">
             New here? <Link to="/signup" className="text-primary hover:underline">Create an account</Link>
           </p>
+          <div className="mt-6 pt-4 border-t border-border flex justify-center">
+            <SentryErrorTest />
+          </div>
         </form>
       </main>
     </div>
